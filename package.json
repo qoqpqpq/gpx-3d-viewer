@@ -1,0 +1,28 @@
+{
+  "name": "ridgeline-gpx",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run tests",
+    "dev:frontend": "vite --host 127.0.0.1",
+    "server": "node --env-file-if-exists=.env.server server/index.mjs",
+    "start": "node --env-file-if-exists=.env.server server/index.mjs",
+    "test:server": "node --test server/*.test.mjs"
+  },
+  "dependencies": {
+    "cesium": "1.145.0",
+    "fast-xml-parser": "5.11.1",
+    "geographiclib-geodesic": "2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.1",
+    "vite-plugin-static-copy": "4.1.1",
+    "vitest": "5.0.2"
+  }
+}

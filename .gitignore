@@ -1,0 +1,10 @@
+node_modules/
+.npm-cache/
+dist/
+.env
+.env.local
+*.log
+.preview.pid
+.env.server
+.env.*.local
+.backend.pid

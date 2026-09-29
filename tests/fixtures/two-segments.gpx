@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Ridgeline test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="22.601" lon="114.202"><name>测试航点</name></wpt>
+  <trk><name>分段导入验证 · 合成</name>
+    <trkseg><trkpt lat="22.600" lon="114.200"><ele>100</ele><time>2026-09-20T00:00:00Z</time></trkpt><trkpt lat="22.601" lon="114.202"><ele>130</ele><time>2026-09-20T00:02:00Z</time></trkpt><trkpt lat="22.603" lon="114.203"><ele>150</ele><time>2026-09-20T00:04:00Z</time></trkpt></trkseg>
+    <trkseg><trkpt lat="22.605" lon="114.207"><ele>200</ele><time>2026-09-20T01:00:00Z</time></trkpt><trkpt lat="22.607" lon="114.209"><ele>240</ele><time>2026-09-20T01:03:00Z</time></trkpt></trkseg>
+  </trk>
+</gpx>
