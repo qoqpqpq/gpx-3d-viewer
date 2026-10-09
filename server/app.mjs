@@ -31,6 +31,7 @@ export function createApp(options={}) {
   if(url.pathname==='/api/map-config'){json(res,200,{amap:{enabled:!!key&&!!secret,key:key&&secret?key:undefined,serviceHost:'/_AMapService'}});return;}
   if(url.pathname==='/api/usage'){
    if(!authorized(req)){json(res,401,{error:'unauthorized'});return;}
+   const today=new Date(now()).toISOString().slice(0,10);if(day!==today){day=today;used=0;}
    json(res,200,{...stats,day,dayRequests:used,dailyLimit,perMinute,scope:'This process only; AMap proxy requests, not provider billing totals.'});return;
   }
   if(url.pathname.startsWith('/_AMapService/')){
