@@ -113,9 +113,17 @@ function resetGuidance(){guidance.reset(selected,activeSegment);lastFix=undefine
 let audio:AudioContext|undefined;
 function prepareAudio(){if($('#sound').checked){try{audio??=new AudioContext();void audio.resume();}catch{}}}
 function alertUser(){if(!$('#sound').checked)return;try{if(audio){const oscillator=audio.createOscillator(),gain=audio.createGain();oscillator.connect(gain);gain.connect(audio.destination);oscillator.frequency.value=740;gain.gain.setValueAtTime(.12,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.45);oscillator.start();oscillator.stop(audio.currentTime+.45);}}catch{} navigator.vibrate?.([150,100,150]);}
+function isValidFix(fix:LocationFix,now:number,lastTimestamp?:number):boolean{
+  return fix.crs==='WGS84' && Number.isFinite(fix.timestamp) && Number.isFinite(now) && 
+    Number.isFinite(fix.accuracy) && fix.accuracy>=0 && fix.accuracy<=35 && 
+    now-fix.timestamp<10000 && fix.timestamp<=now+1000 && 
+    (lastTimestamp===undefined || fix.timestamp>lastTimestamp) && 
+    Number.isFinite(fix.lat) && Number.isFinite(fix.lon) && 
+    Math.abs(fix.lat)<=90 && Math.abs(fix.lon)<=180;
+}
 function handleFix(fix:LocationFix){
   if(!current)return;lastFix=fix;const result=guidance.update(current.track,fix);
-  if(Number.isFinite(fix.lat)&&Number.isFinite(fix.lon)&&Math.abs(fix.lat)<=90&&Math.abs(fix.lon)<=180&&Number.isFinite(fix.timestamp)&&Date.now()-fix.timestamp<10000&&fix.accuracy<=35){routeMap.setLive(fix);scene?.setLive(fix);}else{routeMap.setLive();scene?.setLive();}
+  if(isValidFix(fix,Date.now())){routeMap.setLive(fix);scene?.setLive(fix);}else{routeMap.setLive();scene?.setLive();}
   if(result.match){updateProgress(guidance.progress??result.match.progress);if(browserActive)selectMeter(guidance.progress??result.match.progress);}
   const d=result.match?Math.round(result.match.distance):0;
   if(result.state==='on-route')status('正在沿线行进',`距路线 ${d} m · 定位精度 ±${Math.round(fix.accuracy)} m`,'good');
