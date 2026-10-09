@@ -34,7 +34,7 @@ export class AmapScene {
   this.frame.srcdoc=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><style>html,body,#map{height:100%;width:100%;margin:0;background:#eef0e8}</style></head><body><div id="map"></div><script>(${amapRuntime.toString()})(${JSON.stringify(location.origin)});<\/script></body></html>`;
   this.timer=setTimeout(()=>{if(!this.ready&&!this.dead)this.fail('高德地图连接超时，已保留本地路线。请检查凭据与网络后重试。');},25000);
  }
- setTrack(track:Track){this.track=track;this.send('track',track.segments.map(s=>simplifyLine(s,Math.max(2,Math.floor(5000/track.segments.length))).map(toGcj)));}
+ setTrack(track:Track){this.track=track;this.send('track',{segments:track.segments.map(s=>simplifyLine(s,Math.max(2,Math.floor(5000/track.segments.length))).map(toGcj)),waypoints:track.waypoints.slice(0,8).map(w=>({pos:toGcj(w),name:w.name}))});}
  setSelected(p:GeoPoint){this.selected=p;this.send('selected',toGcj(p));}
  setLive(p?:GeoPoint){this.live=p;this.send('live',p?toGcj(p):null);}
  fit(){this.send('fit',null);} zoom(multiplier:number){this.send('zoom',multiplier>1?1:-1);}
@@ -68,8 +68,9 @@ export function amapRuntime(origin:string){
   if(type==='track'){
    map.remove(lines);lines=[];
    if(selected)map.remove(selected);if(live)map.remove(live);selected=undefined;live=undefined;
-   for(const path of data){if(path.length>1)lines.push(new A.Polyline({path,strokeColor:'#e67d32',strokeWeight:5,isOutline:true,outlineColor:'#fff',borderWeight:1,bubble:true}));
+   for(const path of data.segments){if(path.length>1)lines.push(new A.Polyline({path,strokeColor:'#e67d32',strokeWeight:5,isOutline:true,outlineColor:'#fff',borderWeight:1,bubble:true}));
     for(const [i,center] of [path[0],path[path.length-1]].entries())lines.push(dot(center,i?'#e67d32':'#325940',12,i?'分段终点':'分段起点'));}
+   if(data.waypoints)for(const wp of data.waypoints){const marker=dot(wp.pos,'#677959',10,wp.name);marker.setLabel({content:`<div style="background:#fff;padding:2px 6px;border-radius:3px;font-size:10px;white-space:nowrap;">${wp.name}</div>`,direction:'right'});lines.push(marker);}
    map.add(lines);fit();
   }
   if(type==='selected'||type==='live'){
