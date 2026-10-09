@@ -126,7 +126,7 @@ function handleFix(fix:LocationFix){
   if(result.alert)alertUser();
 }
 function stopSimulation(){if(simulation)clearInterval(simulation);simulation=undefined;$('#play').innerHTML=`${icon('play')} 开始模拟`;}
-function stopAll(){stopSimulation();browserLocation.stop();browserActive=false;$('#segment').disabled=false;$('#scrub').disabled=false;lastFix=undefined;$('#locate').innerHTML=`${icon('locate')} 使用浏览器定位`;$('#play').disabled=false;$('#reverse').disabled=false;$('#mode-tag').textContent='模拟';}
+function stopAll(){stopSimulation();browserLocation.stop();browserActive=false;$('#segment').disabled=false;$('#scrub').disabled=false;$('#profile').style.pointerEvents='';$('#profile').style.opacity='';lastFix=undefined;$('#locate').innerHTML=`${icon('locate')} 使用浏览器定位`;$('#play').disabled=false;$('#reverse').disabled=false;$('#mode-tag').textContent='模拟';}
 function tick(){
   if(!current)return;const now=Date.now(),dt=Math.min((now-lastTick)/1000,1);lastTick=now;
   const step=advanceSimulation(current.track,simMeter,activeSegment,(reverse?-1:1)*1.3*Number($('#speed').value)*dt);simMeter=step.meter;
@@ -144,7 +144,7 @@ $('#play').addEventListener('click',()=>{
   guidance.reset(simMeter,activeSegment);lastTick=Date.now();simulation=setInterval(tick,500);$('#play').innerHTML=`${icon('pause')} 暂停模拟`;tick();
 });
 $('#locate').addEventListener('click',()=>{
-  if(!current)return;if(browserActive){stopAll();resetGuidance();return;}stopAll();prepareAudio();browserActive=true;guidance.reset(selected,activeSegment);$('#mode-tag').textContent='浏览器';$('#locate').innerHTML=`${icon('close')} 停止定位`;$('#play').disabled=true;$('#reverse').disabled=true;status('等待设备位置','请允许浏览器定位；电脑定位可能不够精确。');
+  if(!current)return;if(browserActive){stopAll();resetGuidance();return;}stopAll();prepareAudio();browserActive=true;guidance.reset(selected,activeSegment);$('#mode-tag').textContent='浏览器';$('#locate').innerHTML=`${icon('close')} 停止定位`;$('#play').disabled=true;$('#reverse').disabled=true;$('#segment').disabled=true;$('#scrub').disabled=true;$('#profile').style.pointerEvents='none';$('#profile').style.opacity='0.5';status('等待设备位置','请允许浏览器定位；电脑定位可能不够精确。');
   browserLocation.start(handleFix,message=>{stopAll();status('无法获取位置',message,'uncertain');toast(message);});
 });
 setInterval(()=>{if(browserActive&&lastFix&&Date.now()-lastFix.timestamp>10000){routeMap.setLive();scene?.setLive();status('位置已过期','超过 10 秒未更新，暂停偏离判断。','uncertain');}},1000);
