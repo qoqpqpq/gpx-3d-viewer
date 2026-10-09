@@ -1,0 +1,32 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# Android
+*.iml
+.gradle
+local.properties
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build outputs
+*.apk
+*.aab
+*.aab.keystore
+
+# Environment
+.env
+.env.local

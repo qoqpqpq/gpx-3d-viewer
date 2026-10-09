@@ -1,0 +1,32 @@
+name: ridgeline_android
+description: 山径 Ridgeline Android 客户端 - GPX 路线工作台
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  webview_flutter: ^4.8.0
+  geolocator: ^12.0.0
+  permission_handler: ^11.3.0
+  sqflite: ^2.3.0
+  path_provider: ^2.1.0
+  audio_service: ^0.18.0
+  vibration: ^1.8.0
+  xml: ^6.5.0
+  js: ^0.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - web/

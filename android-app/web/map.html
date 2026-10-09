@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>山径地图</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        #map { width: 100%; height: 100%; background: #eef0e8; }
+        .status {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="status" id="status">正在加载地图...</div>
+    
+    <script>
+        // WebView Bridge - 接收 Flutter 数据
+        window.RidgelineBridge = {
+            onTrackLoaded: function(data) {
+                console.log('Track loaded:', data);
+                document.getElementById('status').textContent = `路线已加载: ${data.name}`;
+            },
+            onLocationUpdate: function(data) {
+                console.log('Location update:', data);
+                document.getElementById('status').textContent = `定位: ${data.lat.toFixed(4)}, ${data.lon.toFixed(4)}`;
+            },
+            onError: function(message) {
+                document.getElementById('status').textContent = `错误: ${message}`;
+            }
+        };
+    </script>
+    
+    <!-- CesiumJS 地图 -->
+    <script src="https://cesium.com/downloads/Cesium/1.115/Build/Cesium/Cesium.js"></script>
+    <script>
+        // 初始化地图
+        var viewer = new Cesium.Viewer('map', {
+            baseLayerPicker: false,
+            geocoder: false,
+            homeButton: false,
+            sceneModePicker: false,
+            navigationHelpButton: false,
+            animation: false,
+            timeline: false,
+            fullscreenButton: false,
+            infoBox: false,
+            selectionIndicator: false,
+            imageryProvider: new Cesium.TileMapServiceImageryProvider({
+                url: '//server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            })
+        });
+        
+        // 默认视角（北京香山）
+        viewer.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(116.208, 40.017, 5000),
+            orientation: {
+                heading: Cesium.Math.toRadians(0),
+                pitch: Cesium.Math.toRadians(-45),
+                roll: 0
+            }
+        });
+        
+        // 发送就绪消息
+        window.RidgelineBridge.onTrackLoaded({
+            name: '地图已就绪',
+            message: 'CesiumJS 初始化完成'
+        });
+        
+        // 接收 Flutter 消息
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'track') {
+                drawTrack(event.data.segments);
+            } else if (event.data.type === 'location') {
+                updateLocation(event.data.lat, event.data.lon);
+            }
+        });
+        
+        function drawTrack(segments) {
+            segments.forEach(function(segment) {
+                var positions = segment.map(function(p) {
+                    return Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele || 0);
+                });
+                viewer.entities.add({
+                    polyline: {
+                        positions: positions,
+                        material: Cesium.Color.ORANGE.withAlpha(0.8),
+                        width: 5,
+                        clampToGround: true
+                    }
+                });
+            });
+            viewer.camera.flyTo({
+                destination: Cesium.computeViewCorridor(segments)
+            });
+        }
+        
+        function updateLocation(lat, lon) {
+            viewer.entities.values.forEach(function(e) {
+                if (e.position && e.position._value) e.position = Cesium.Cartesian3.fromDegrees(lon, lat, 0);
+            });
+        }
+    </script>
+</body>
+</html>
