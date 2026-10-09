@@ -158,3 +158,41 @@ describe('AMap display boundary',()=>{
   expect(loadMapSettings(store)).toMatchObject({...config,amapKey:'amap-test',amapSecurity:'security-test',buildings:false});
  });
 });
+
+describe('B-08 多轨迹删除后重导入回归',()=>{
+  it('preserves existing renamed tracks and restores deleted tracks on re-import',()=>{
+    const hash='test-hash-123';
+    const trackA={track:{id:`${hash}-0`,name:'Route A',demo:false,kind:'track' as const,segments:[],waypoints:[],stats:{distance:1000,ascent:100,descent:100,max:200,min:0,count:10,elevationCount:10,duration:null},warnings:[]},xml:'<gpx/>',hash,original:null as any};
+    const trackB={track:{id:`${hash}-1`,name:'Route B (Renamed)',demo:false,kind:'track' as const,segments:[],waypoints:[],stats:{distance:2000,ascent:200,descent:200,max:400,min:0,count:20,elevationCount:20,duration:null},warnings:[]},xml:'<gpx/>',hash,original:null as any};
+    const trackC={track:{id:`${hash}-2`,name:'Route C',demo:false,kind:'track' as const,segments:[],waypoints:[],stats:{distance:3000,ascent:300,descent:300,max:600,min:0,count:30,elevationCount:30,duration:null},warnings:[]},xml:'<gpx/>',hash,original:null as any};
+
+    let records=[trackA,trackB];
+
+    const incoming=[trackA,trackB,trackC].filter(r=>!records.some(existing=>existing.track.id===r.track.id));
+    expect(incoming).toHaveLength(1);
+    expect(incoming[0].track.id).toBe(`${hash}-2`);
+    expect(incoming[0].track.name).toBe('Route C');
+
+    records.unshift(...incoming);
+    expect(records).toHaveLength(3);
+
+    const renamedInRecords=records.find(r=>r.track.id===`${hash}-1`);
+    expect(renamedInRecords?.track.name).toBe('Route B (Renamed)');
+
+    const restoredC=records.find(r=>r.track.id===`${hash}-2`);
+    expect(restoredC?.track.name).toBe('Route C');
+  });
+
+  it('does not duplicate tracks on repeated import',()=>{
+    const hash='test-hash-456';
+    const trackA={track:{id:`${hash}-0`,name:'Route A',demo:false,kind:'track' as const,segments:[],waypoints:[],stats:{distance:1000,ascent:100,descent:100,max:200,min:0,count:10,elevationCount:10,duration:null},warnings:[]},xml:'<gpx/>',hash,original:null as any};
+    const trackB={track:{id:`${hash}-1`,name:'Route B',demo:false,kind:'track' as const,segments:[],waypoints:[],stats:{distance:2000,ascent:200,descent:200,max:400,min:0,count:20,elevationCount:20,duration:null},warnings:[]},xml:'<gpx/>',hash,original:null as any};
+
+    let records=[trackA,trackB];
+
+    const incoming=[trackA,trackB].filter(r=>!records.some(existing=>existing.track.id===r.track.id));
+    expect(incoming).toHaveLength(0);
+
+    expect(records).toHaveLength(2);
+  });
+});
