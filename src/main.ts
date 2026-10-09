@@ -147,7 +147,7 @@ $('#locate').addEventListener('click',()=>{
   if(!current)return;if(browserActive){stopAll();resetGuidance();return;}stopAll();prepareAudio();browserActive=true;guidance.reset(selected,activeSegment);$('#mode-tag').textContent='浏览器';$('#locate').innerHTML=`${icon('close')} 停止定位`;$('#play').disabled=true;$('#reverse').disabled=true;status('等待设备位置','请允许浏览器定位；电脑定位可能不够精确。');
   browserLocation.start(handleFix,message=>{stopAll();status('无法获取位置',message,'uncertain');toast(message);});
 });
-setInterval(()=>{if(browserActive&&lastFix&&Date.now()-lastFix.timestamp>10000)status('位置已过期','超过 10 秒未更新，暂停偏离判断。','uncertain');},1000);
+setInterval(()=>{if(browserActive&&lastFix&&Date.now()-lastFix.timestamp>10000){routeMap.setLive();scene?.setLive();status('位置已过期','超过 10 秒未更新，暂停偏离判断。','uncertain');}},1000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&(simulation||browserActive)){stopAll();status('行进已暂停','页面已进入后台，请返回后手动重新开始。','uncertain');}});
 $('#reverse').addEventListener('change',()=>{if(!current)return;stopSimulation();reverse=$('#reverse').checked;activeSegment=reverse?current.track.segments.length-1:0;selectMeter(reverse?current.track.stats.distance:0);resetGuidance();});
 $('#segment').addEventListener('change',()=>{if(!current||browserActive)return;stopSimulation();activeSegment=Number($('#segment').value);const points=current.track.segments[activeSegment];selectMeter(reverse?points.at(-1)!.distance:points[0].distance);resetGuidance();});
