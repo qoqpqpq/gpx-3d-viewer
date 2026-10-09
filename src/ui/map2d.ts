@@ -10,7 +10,7 @@ export class RouteMap {
   private center = { x: 0, y: 0 }; private origin: GeoPoint = { lat: 0, lon: 0 };
   private selected?: GeoPoint; private live?: GeoPoint;
   private drag?: { x: number; y: number; px: number; py: number; moved: boolean };
-  constructor(private canvas: HTMLCanvasElement, private onSelect: (meter: number) => void) {
+  constructor(private canvas: HTMLCanvasElement, private onSelect: (meter: number, segment: number) => void) {
     this.ctx = canvas.getContext('2d')!;
     new ResizeObserver(() => this.resize()).observe(canvas);
     canvas.addEventListener('wheel', e => { e.preventDefault(); this.zoomBy(e.deltaY > 0 ? 0.88 : 1.14); }, { passive: false });
@@ -46,14 +46,17 @@ export class RouteMap {
   }
   private screen(p: GeoPoint): [number, number] { const [x,y] = localXY(p, this.origin); return [this.width/2 + (x-this.center.x)*this.scale*this.zoom + this.pan.x, this.height/2 - (y-this.center.y)*this.scale*this.zoom + this.pan.y]; }
   private pick(x: number, y: number) {
-    let best = Infinity, meter = 0;
-    for (const seg of this.lines) for (let i = 1; i < seg.length; i++) {
-      const a = seg[i-1], b = seg[i], [ax,ay] = this.screen(a), [bx,by] = this.screen(b), dx = bx-ax, dy = by-ay;
-      const t = dx*dx+dy*dy ? Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy))) : 0;
-      const d = Math.hypot(x-ax-t*dx,y-ay-t*dy);
-      if (d < best) { best = d; meter = a.distance+(b.distance-a.distance)*t; }
+    let best = Infinity, meter = 0, segIndex = 0;
+    for (let si = 0; si < this.lines.length; si++) {
+      const seg = this.lines[si];
+      for (let i = 1; i < seg.length; i++) {
+        const a = seg[i-1], b = seg[i], [ax,ay] = this.screen(a), [bx,by] = this.screen(b), dx = bx-ax, dy = by-ay;
+        const t = dx*dx+dy*dy ? Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy))) : 0;
+        const d = Math.hypot(x-ax-t*dx,y-ay-t*dy);
+        if (d < best) { best = d; meter = a.distance+(b.distance-a.distance)*t; segIndex = si; }
+      }
     }
-    if (best < 45) this.onSelect(meter);
+    if (best < 45) this.onSelect(meter, segIndex);
   }
   draw() {
     const c = this.ctx, w = this.width, h = this.height;

@@ -54,7 +54,7 @@ let simulation:ReturnType<typeof setInterval>|undefined, browserActive=false, la
 let reverse=false, simMeter=0, lastTick=0;
 let activeSegment=0;
 const guidance=new Guidance(), browserLocation=new BrowserLocation();
-const routeMap=new RouteMap($('#map'), meter=>{if(!browserActive){stopSimulation();selectMeter(meter);resetGuidance();}});
+const routeMap=new RouteMap($('#map'), (meter,segment)=>{if(!browserActive){stopSimulation();activeSegment=segment;selectMeter(meter);resetGuidance();}});
 let toastTimer:ReturnType<typeof setTimeout>;
 function toast(message:string){ $('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,5500); }
 function renderLibrary(){
