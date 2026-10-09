@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci --registry=https://registry.npmjs.org
+      
+      - name: Run frontend tests
+        run: npm test
+      
+      - name: Run backend tests
+        run: npm run test:server
+      
+      - name: Build for production
+        run: npm run build
+      
+      - name: Type check
+        run: npx tsc --noEmit
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci --registry=https://registry.npmjs.org
+      
+      - name: Check for secrets in source
+        run: |
+          echo "Checking for potential secrets..."
+          if grep -r "AMAP_WEB_KEY=" src/ server/ --include="*.ts" --include="*.mjs" | grep -v "\.example" | grep -v "//"; then
+            echo "Error: Potential secrets found in source files"
+            exit 1
+          fi
+          if grep -r "AMAP_SECURITY_CODE=" src/ server/ --include="*.ts" --include="*.mjs" | grep -v "\.example" | grep -v "//"; then
+            echo "Error: Potential secrets found in source files"
+            exit 1
+          fi
+          echo "No secrets found in source files"
