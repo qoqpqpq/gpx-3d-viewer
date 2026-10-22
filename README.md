@@ -2,7 +2,7 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.3 桌面浏览器原型 + Android 最小闭环原型
+**当前版本：** v0.3.4 桌面浏览器原型 + Android 最小闭环原型 + Android Native 工程骨架
 
 ---
 
@@ -12,6 +12,7 @@ GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹�
 |---|---|---|
 | 桌面浏览器版 | `/` | ✅ 完整功能 |
 | Android 客户端 | `android-app/` | 🔶 最小闭环（定位→匹配→告警） |
+| Android Native | `android-native/` | 🔶 原生工程骨架 + 核心模型/解析器 |
 | 轻量后端 | `server/` | ✅ 高德代理 + 静态服务 |
 | 任务看板 | `docs/task-backlog.md` | 📋 P0 全部完成 |
 
@@ -120,6 +121,11 @@ flutter build apk    # 构建 APK
 │   ├── lib/               # Dart 代码（UI + 导航匹配）
 │   ├── android/           # Android 原生代码（定位服务 + 桥接）
 │   └── web/               # WebView 地图页面
+│
+├── android-native/        # 原生 Android 工程骨架
+│   ├── app/src/main/java  # Kotlin 模型、GPX 解析、导航匹配
+│   ├── app/src/test       # JVM 单元测试入口
+│   └── README.md          # 原生工程说明与构建要求
 │
 ├── package.json           # 前端依赖
 ├── .env.server            # 后端环境配置（不入库）
