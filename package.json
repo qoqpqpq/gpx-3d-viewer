@@ -1,6 +1,6 @@
 {
   "name": "ridgeline-gpx",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,8 @@
     "dev:frontend": "vite --host 127.0.0.1",
     "server": "node --env-file-if-exists=.env.server server/index.mjs",
     "start": "node --env-file-if-exists=.env.server server/index.mjs",
-    "test:server": "node --test server/*.test.mjs"
+    "test:server": "node --test server/*.test.mjs",
+    "bench:parse": "vitest run benchmark/gpx-parse.bench.test.ts"
   },
   "dependencies": {
     "cesium": "1.145.0",
