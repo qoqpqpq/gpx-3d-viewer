@@ -27,16 +27,15 @@ cd android-native
 
 ## 本仓库验证记录
 
-当前运行环境没有可用的系统 Java/Gradle，且沙箱不支持系统级安装。已在工作区临时安装本地 JDK 与 Kotlin 嵌入编译器，完成 Kotlin 核心代码 JVM 编译和最小单测验证：
+当前运行环境已安装系统 JDK 17，Gradle 可启动；`AGP 8.7.0` 需要 Gradle `8.9`，本仓库已将 AGP 调整到 `8.7.0`，完整验证需使用 Gradle `8.9` 或 Android Studio 内置 Gradle。已完成 Kotlin 核心代码 JVM 编译和最小单测验证：
 
 - `Track.kt` / `LocationFix.kt` / `GpxParser.kt` / `Guidance.kt` 可编译为 JVM class
 - `GpxParserTest` 通过：2/2
-- Gradle 完整 Android 插件链路尚未跑通：本地 Gradle 发行版受 `libnative-platform.so` 原生服务加载限制，不能启动到 Android 插件任务
 
 ## 当前限制
 
 - UI 目前只有最小占位 Activity，不含地图渲染。
 - 未接入前台定位服务和权限请求。
 - 未接入真实文件选择器。
-- 尚未验证 `assembleDebug`，因此不能声称 APK 可安装运行。
+- 尚未验证 `assembleDebug`，因此不能声称 APK 可安装运行；后续需 Gradle 8.9 或 Android Studio 内置 Gradle。
 - GPX 解析器为原生 Kotlin 初版，边界口径参考桌面端，但后续应补充更多回归用例。
