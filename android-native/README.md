@@ -27,9 +27,14 @@ cd android-native
 
 ## 本仓库验证记录
 
-当前运行环境已安装系统 JDK 17，Gradle 可启动；`AGP 8.7.0` 需要 Gradle `8.9`，本仓库已将 AGP 调整到 `8.7.0`，完整验证需使用 Gradle `8.9` 或 Android Studio 内置 Gradle。已完成 Kotlin 核心代码 JVM 编译和最小单测验证：
+当前运行环境已安装系统 JDK 17，Gradle 可启动；本目录已补充 Gradle wrapper。已在本地用 `AGP 8.6.1 + Gradle 8.7` 跑通 Android Gradle 核心链路：`testDebugUnitTest` 和 `assembleDebug` 均成功，并生成 Debug APK。若后续升级 AGP 8.7.0，则需要 Gradle 8.9 或 Android Studio 内置 Gradle。
 
-- `Track.kt` / `LocationFix.kt` / `GpxParser.kt` / `Guidance.kt` 可编译为 JVM class
+已验证内容：
+
+- `AGP 8.6.1 + Gradle 8.7 + testDebugUnitTest` 成功：`BUILD SUCCESSFUL`，`27 actionable tasks`
+- `AGP 8.6.1 + Gradle 8.7 + assembleDebug` 成功：`BUILD SUCCESSFUL`，`34 actionable tasks`
+- Debug APK 生成：`app/build/outputs/apk/debug/app-debug.apk`，约 13 MB
+- Kotlin 核心代码可编译并参与 Android Gradle 单测链路
 - `GpxParserTest` 通过：2/2
 
 ## 当前限制
@@ -37,5 +42,5 @@ cd android-native
 - UI 目前只有最小占位 Activity，不含地图渲染。
 - 未接入前台定位服务和权限请求。
 - 未接入真实文件选择器。
-- 尚未验证 `assembleDebug`，因此不能声称 APK 可安装运行；后续需 Gradle 8.9 或 Android Studio 内置 Gradle。
+- 当前 APK 为 Gradle Debug 构建，未做真机安装、签名发布、混淆或正式渠道包验证。
 - GPX 解析器为原生 Kotlin 初版，边界口径参考桌面端，但后续应补充更多回归用例。

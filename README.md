@@ -2,7 +2,7 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.5 桌面浏览器原型 + Android 最小闭环原型 + Android Native 工程骨架
+**当前版本：** v0.3.6 桌面浏览器原型 + Android 最小闭环原型 + Android Native 工程骨架与 Gradle 构建链路验证
 
 ---
 
@@ -12,7 +12,7 @@ GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹�
 |---|---|---|
 | 桌面浏览器版 | `/` | ✅ 完整功能 |
 | Android 客户端 | `android-app/` | 🔶 最小闭环（定位→匹配→告警） |
-| Android Native | `android-native/` | 🔶 原生工程骨架 + 核心模型/解析器 |
+| Android Native | `android-native/` | 🔶 原生工程骨架 + Gradle 单测/APK 构建验证 |
 | 轻量后端 | `server/` | ✅ 高德代理 + 静态服务 |
 | 任务看板 | `docs/task-backlog.md` | 📋 P0 全部完成 |
 
@@ -167,7 +167,8 @@ flutter build apk    # 构建 APK
 ## 当前边界
 
 - **桌面版**：完整行前查看和模拟功能；不是可依赖的户外导航
-- **Android 版**：最小闭环原型（定位→匹配→告警）；GPX 导入、离线地图、持久化待实现
+- **Android 版**：Flutter 最小闭环原型（定位→匹配→告警）；GPX 导入、离线地图、持久化待实现
+- **Android Native 版**：工程骨架、GPX 解析/导航核心、Gradle 单测和 Debug APK 构建链路已验证；不含完整地图 UI、前台定位服务、真实文件选择和签名发布
 - **离线能力**：二维路线、GPS 定位、轨迹匹配可离线；三维地图和底图需要网络
 - **高德集成**：显示边界转换为 GCJ-02；GPX 数据和算法保持 WGS84
 
@@ -204,7 +205,7 @@ flutter build apk    # 构建 APK
 | R-106 轨迹记录导出 | 🟢完成 | 浏览器定位记录 + GPX 导出 |
 | R-112 外部地图导航 | 🟢完成 | 高德/百度/Apple/Google 四种地图服务 |
 | T-09 性能测试 | 🟡进行中 | 桌面解析基准已记录；真机性能待补 |
-| Android Native 骨架 | 🔶进行中 | Manifest/MainActivity 与核心 JVM 编译验证完成；APK 构建待标准环境 |
+| Android Native 骨架 | 🔶进行中 | Gradle `testDebugUnitTest` / `assembleDebug` 已跑通；UI/定位/导入/发布链路待实现 |
 
 ---
 
@@ -218,6 +219,7 @@ flutter build apk    # 构建 APK
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-10-23 | v0.3.6 | Android Native Gradle 单测与 Debug APK 构建链路验证；补充 Gradle wrapper 与工具链说明 |
 | 2026-10-19 | v0.3.5 | Android Native 工程骨架：Manifest、MainActivity、Kotlin 核心编译验证 |
 | 2026-10-19 | v0.3.3 | T-09 桌面 GPX 解析性能基准（1万/5万/20万点） |
 | 2026-10-19 | v0.3.1 | 外部地图导航（高德/百度/Apple/Google） |

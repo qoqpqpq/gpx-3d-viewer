@@ -1,5 +1,43 @@
 # 更新日志
 
+## v0.3.6 - 2026-10-23
+
+Android Native Gradle 单测与 Debug APK 构建链路验证。
+
+---
+
+### 🤖 新增与调整
+
+| 项 | 说明 |
+|---|---|
+| **Android Native Gradle** | 调整 `AGP 8.6.1 + Gradle 8.7` 为当前可复现本地验证组合 |
+| **Gradle Wrapper** | 保留 `android-native/gradlew` / `gradlew.bat`，便于标准环境执行 Android 构建 |
+| **工具链说明** | 更新 Android Native 构建要求与验证记录，明确当前验证范围 |
+
+---
+
+### 🧪 验证结果
+
+| 测试 | 结果 |
+|---|---|
+| Android Gradle `testDebugUnitTest` | 通过（`BUILD SUCCESSFUL`，`27 actionable tasks`） |
+| Android Gradle `assembleDebug` | 通过（`BUILD SUCCESSFUL`，`34 actionable tasks`） |
+| Debug APK 产物 | 生成 `app/build/outputs/apk/debug/app-debug.apk`，约 13 MB |
+| Android `GpxParserTest` | 2/2 通过 |
+| 前端/算法测试 | 68/68 通过 |
+| 后端测试 | 6/6 通过 |
+| TypeScript 类型检查与生产构建 | 通过 |
+
+---
+
+### 🚧 当前边界
+
+- Android Native 仍是工程骨架与核心模块验证，不含完整地图 UI、真实文件选择和前台定位服务
+- Debug APK 未做真机安装、签名发布或正式渠道包验证
+- 若升级 Android Gradle Plugin 到 8.7.0，需要 Gradle 8.9 或 Android Studio 内置 Gradle
+
+---
+
 ## v0.3.5 - 2026-10-19
 
 Android Native 工程骨架补齐与 Kotlin 核心验证。
