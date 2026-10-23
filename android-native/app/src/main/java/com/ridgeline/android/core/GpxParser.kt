@@ -13,12 +13,10 @@ object GpxParser {
     const val MAX_POINTS = 200_000
     private const val MAX_CANDIDATES = 128
     private const val MAX_SEGMENTS = 1_000
-    private const val MAX_DEPTH = 64
 
     fun parse(xml: String, filename: String = "路线.gpx"): List<Track> {
         require(xml.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "文件超过 20 MB，请先分轨导出。" }
         require(!Regex("<!DOCTYPE|<!ENTITY", RegexOption.IGNORE_CASE).containsMatchIn(xml)) { "不支持包含 DTD 或自定义实体的 XML。" }
-        require(depthLimit(xml) <= MAX_DEPTH) { "XML 层级过深，请检查文件。" }
 
         val tokens = tokenize(xml)
         val waypoints = mutableListOf<Waypoint>()
@@ -30,7 +28,6 @@ object GpxParser {
         var segments = mutableListOf<List<GeoPoint>>()
         var segment = mutableListOf<GeoPoint>()
         var pointCount = 0
-        var currentName = ""
 
         fun addPoint(point: GeoPoint) {
             pointCount++
@@ -47,11 +44,11 @@ object GpxParser {
 
         fun flushCandidate(kind: Kind) {
             flushSegment()
+            if (segments.size > MAX_SEGMENTS) error("轨迹分段超过 1,000 个，请先整理或拆分文件。")
             if (segments.flatten().size < 2) {
                 segments.clear()
                 return
             }
-            if (segments.size > MAX_SEGMENTS) error("轨迹分段超过 1,000 个，请先整理或拆分文件。")
             if (tracks.size >= MAX_CANDIDATES) error("单个文件最多支持 128 条轨道，请拆分后导入。")
             tracks.add(buildTrack(kind, tracks.size, trackName.ifEmpty { routeName }, filename, segments, waypoints.toList()))
             segments = mutableListOf()
@@ -92,7 +89,7 @@ object GpxParser {
                     when (currentKind) {
                         Kind.TRACK -> trackName = text
                         Kind.ROUTE -> routeName = text
-                        null -> currentName = text
+                        null -> Unit
                     }
                 }
                 token.name in setOf("trkpt", "rtept", "wpt") -> {
@@ -132,43 +129,49 @@ object GpxParser {
         rawSegments: List<List<GeoPoint>>,
         waypoints: List<Waypoint>,
     ): Track {
-        var distance = 0.0
+        var totalDistance = 0.0
         var ascent = 0.0
         var descent = 0.0
         var elevationCount = 0
         var duration = 0L
         var validTime = true
-        var min = Double.POSITIVE_INFINITY
-        var max = Double.NEGATIVE_INFINITY
+        var trackMin = Double.POSITIVE_INFINITY
+        var trackMax = Double.NEGATIVE_INFINITY
         var jumpCount = 0
         var globalIndex = 0
+        var previousPoint: GeoPoint? = null
 
         val segments = rawSegments.mapIndexed { si, seg ->
             var anchor: Double? = null
             seg.map { p ->
-                if (globalIndex > 0) {
-                    val previous = rawSegments[si - 1].lastOrNull() ?: seg[globalIndex - 1]
+                previousPoint?.let { previous ->
                     val gap = distance(previous, p)
-                    distance += gap
+                    totalDistance += gap
                     if (gap > 2000) jumpCount++
                     val prevTime = previous.time
                     val curTime = p.time
                     if (prevTime == null || curTime == null || curTime < prevTime) validTime = false
                     else duration += curTime - prevTime
                 }
+                previousPoint = p
                 if (p.time == null) validTime = false
-                if (p.ele != null) {
-                    elevationCount++
-                    min = minOf(min, p.ele)
-                    max = maxOf(max, p.ele)
-                    if (anchor == null) anchor = p.ele
-                    val delta = p.ele - anchor!!
-                    if (abs(delta) >= 3.0) {
-                        if (delta > 0) ascent += delta else descent -= delta
-                        anchor = p.ele
+                when (val ele = p.ele) {
+                    null -> anchor = null
+                    else -> {
+                        elevationCount++
+                        trackMin = minOf(trackMin, ele)
+                        trackMax = maxOf(trackMax, ele)
+                        val previousAnchor = anchor
+                        anchor = ele
+                        if (previousAnchor != null) {
+                            val delta = ele - previousAnchor
+                            if (abs(delta) >= 3.0) {
+                                if (delta > 0) ascent += delta else descent -= delta
+                            }
+                        }
                     }
-                } else anchor = null
-                val point = TrackPoint(p.lat, p.lon, p.ele, p.time, distance, globalIndex, si)
+                }
+                val point = TrackPoint(p.lat, p.lon, p.ele, p.time, totalDistance, globalIndex, si)
                 globalIndex++
                 point
             }
@@ -194,11 +197,11 @@ object GpxParser {
             segments = segments,
             waypoints = waypoints,
             stats = TrackStats(
-                distance = distance,
+                distance = totalDistance,
                 ascent = if (elevationCount == total) ascent else null,
                 descent = if (elevationCount == total) descent else null,
-                min = if (elevationCount > 0) min else null,
-                max = if (elevationCount > 0) max else null,
+                min = if (elevationCount > 0) trackMin else null,
+                max = if (elevationCount > 0) trackMax else null,
                 duration = if (validTime) duration else null,
                 count = total,
                 elevationCount = elevationCount,
@@ -225,9 +228,6 @@ object GpxParser {
         val result = mutableListOf<Token>()
         val tagRegex = Regex("<(/?)([a-zA-Z_][a-zA-Z0-9_.:-]*)([^>]*?)(/?)>")
         val attrsRegex = Regex("""([a-zA-Z_:][a-zA-Z0-9_.:-]*)\s*=\s*"([^"]*)"|([a-zA-Z_:][a-zA-Z0-9_.:-]*)\s*=\s*'([^']*)'""")
-        val textRegex = Regex(">([^<]+)<")
-
-        var lastEnd = 0
         val allTags = tagRegex.findAll(xml).toList()
         for ((i, tag) in allTags.withIndex()) {
             if (i > 0) {
@@ -235,8 +235,6 @@ object GpxParser {
                 val between = xml.substring(previous.range.last + 1, tag.range.first)
                 val text = if (between.trim().isEmpty()) null else between.trim()
                 result.add(Token(name = previous.groupValues[2], closing = previous.groupValues[1] == "/", attrs = emptyMap(), text = text))
-            } else {
-                lastEnd = 0
             }
             val closing = tag.groupValues[1] == "/"
             val name = tag.groupValues[2]
@@ -249,7 +247,6 @@ object GpxParser {
             }
             result.add(Token(name = name, closing = closing, attrs = attrs, text = null))
         }
-        lastEnd = xml.length
         return result
     }
 

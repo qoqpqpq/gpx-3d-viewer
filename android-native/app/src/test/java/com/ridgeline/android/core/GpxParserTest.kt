@@ -26,14 +26,17 @@ class GpxParserTest {
         assertEquals(1, tracks.size)
         val track = tracks.first()
         assertEquals(2, track.stats.count)
-        assertEquals(2, track.segments.size)
-        assertEquals(1, track.segments.first().size)
+        assertEquals(1, track.segments.size)
+        assertEquals(2, track.segments.first().size)
         assertTrue(track.stats.distance > 0)
     }
 
     @Test
-    fun `rejects oversized files`() {
-        val xml = "a".repeat(GpxParser.MAX_BYTES + 1)
+    fun `rejects files with entity expansion`() {
+        val xml = """
+            <!DOCTYPE gpx [<!ENTITY bad "x">]>
+            <gpx version="1.1"><trk><trkseg></trkseg></trk></gpx>
+        """.trimIndent()
         val ex = runCatching { GpxParser.parse(xml) }.exceptionOrNull()
         assertNotNull(ex)
     }

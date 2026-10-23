@@ -2,7 +2,7 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.4 桌面浏览器原型 + Android 最小闭环原型 + Android Native 工程骨架
+**当前版本：** v0.3.5 桌面浏览器原型 + Android 最小闭环原型 + Android Native 工程骨架
 
 ---
 
@@ -204,6 +204,7 @@ flutter build apk    # 构建 APK
 | R-106 轨迹记录导出 | 🟢完成 | 浏览器定位记录 + GPX 导出 |
 | R-112 外部地图导航 | 🟢完成 | 高德/百度/Apple/Google 四种地图服务 |
 | T-09 性能测试 | 🟡进行中 | 桌面解析基准已记录；真机性能待补 |
+| Android Native 骨架 | 🔶进行中 | Manifest/MainActivity 与核心 JVM 编译验证完成；APK 构建待标准环境 |
 
 ---
 
@@ -217,6 +218,7 @@ flutter build apk    # 构建 APK
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-10-19 | v0.3.5 | Android Native 工程骨架：Manifest、MainActivity、Kotlin 核心编译验证 |
 | 2026-10-19 | v0.3.3 | T-09 桌面 GPX 解析性能基准（1万/5万/20万点） |
 | 2026-10-19 | v0.3.1 | 外部地图导航（高德/百度/Apple/Google） |
 | 2026-10-19 | v0.3 | 路线搜索过滤、多排序选项、路线项增强（显示导入日期） |

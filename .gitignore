@@ -8,3 +8,10 @@ dist/
 .env.server
 .env.*.local
 .backend.pid
+.dev-tools/
+.android-sdk/
+.android-cache/
+android-native/local.properties
+android-native/.gradle/
+android-native/build/
+android-native/app/build/

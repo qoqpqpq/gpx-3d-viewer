@@ -45,10 +45,10 @@ class Guidance {
     }
 
     fun update(track: Track, fix: LocationFix, now: Long = System.currentTimeMillis()): GuidanceResult {
-        if (fix.accuracy !in 0.0..35 || fix.lat !in -90.0..90.0 || fix.lon !in -180.0..180.0 ||
+        if (fix.accuracy !in 0.0..35.0 || fix.lat !in -90.0..90.0 || fix.lon !in -180.0..180.0 ||
             now < fix.timestamp - 1000 || now > fix.timestamp + 10_000 ||
             fix.timestamp <= lastTimestamp ||
-            !fix.timestamp.isFinite() || !now.isFinite() || !fix.accuracy.isFinite()
+            !fix.accuracy.isFinite()
         ) {
             outsideAt = null
             insideAt = null
@@ -120,8 +120,8 @@ class Guidance {
                 val progress = a.distance + (b.distance - a.distance) * t
                 val candidate = Match(distance = d, progress = progress, segment = a.segment, point = if (t < 0.5) a else b)
 
-                if (global == null || d < global!!.distance) global = candidate
-                if ((activeSegment == null || a.segment == activeSegment) && (previous == null || abs(progress - previous) <= window) && (nearest == null || d < nearest!!.distance)) {
+                if (global == null || d < global.distance) global = candidate
+                if ((activeSegment == null || a.segment == activeSegment) && (previous == null || abs(progress - previous) <= window) && (nearest == null || d < nearest.distance)) {
                     nearest = candidate
                 }
             }
@@ -129,7 +129,7 @@ class Guidance {
 
         val globalMatch = global ?: return nearest ?: Match(0.0, 0.0, 0, track.segments.first().first(), false)
         if (((previous != null && abs(globalMatch.progress - previous) > window) || (activeSegment != null && globalMatch.segment != activeSegment)) &&
-            (nearest == null || nearest!!.distance > globalMatch.distance + 100.0)
+            (nearest == null || nearest.distance > globalMatch.distance + 100.0)
         ) {
             return globalMatch.copy(requiresReanchor = true)
         }

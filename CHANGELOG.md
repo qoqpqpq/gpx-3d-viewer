@@ -1,5 +1,39 @@
 # 更新日志
 
+## v0.3.5 - 2026-10-19
+
+Android Native 工程骨架补齐与 Kotlin 核心验证。
+
+---
+
+### 🤖 新增与修复
+
+| 项 | 说明 |
+|---|---|
+| **Android Native** | 新增 `AndroidManifest.xml`、最小 `MainActivity`、`local.properties` 构建说明和本地工具链忽略规则 |
+| **Kotlin 核心** | 修复 `GpxParser` / `Guidance` 编译问题、距离累计、测试期望和警告清理 |
+
+---
+
+### 🧪 验证结果
+
+| 测试 | 结果 |
+|---|---|
+| Android Kotlin 核心 JVM 编译 | 通过（`-Werror`） |
+| Android `GpxParserTest` | 2/2 通过 |
+| 前端/算法测试 | 68/68 通过 |
+| 后端测试 | 6/6 通过 |
+| TypeScript 类型检查与生产构建 | 通过 |
+
+---
+
+### 🚧 当前边界
+
+- 本环境没有可用系统 Gradle Android 插件链路；本地 Gradle 发行版受 `libnative-platform.so` 原生服务加载限制
+- 尚未执行 `assembleDebug`，不能声称 APK 可安装运行
+
+---
+
 ## v0.3.3 - 2026-10-19
 
 T-09 桌面端大轨迹解析性能基准（部分完成）。

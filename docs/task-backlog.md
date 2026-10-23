@@ -75,4 +75,4 @@
 | 2026-10-19 | R-112 完成：外部地图导航（高德/百度/Apple/Google），新增 external-nav.ts 模块和 11 个测试，测试总数 52 个 |
 | 2026-10-19 | R-106 完成：浏览器定位轨迹记录与 GPX 导出，新增 TrackRecorder/gpx-export 模块和 16 个测试，测试总数 68 个 |
 | 2026-10-19 | T-09 部分完成：新增桌面 GPX 解析性能基准 benchmark/gpx-parse.bench.test.ts，记录 1万/5万/20万点解析结果；真机内存、帧率仍待补 |
-| 2026-10-19 | 新增 `android-native/` 原生 Android 工程骨架，包含模型、GPX 解析、导航匹配和最小测试入口；当前环境未验证 Gradle 构建 |
+| 2026-10-19 | 新增 `android-native/` 原生 Android 工程骨架，包含模型、GPX 解析、导航匹配、Manifest、MainActivity 和 JVM 测试入口；本地 Kotlin 核心编译与 `GpxParserTest` 2/2 通过；Gradle/APK 构建待标准环境 |
