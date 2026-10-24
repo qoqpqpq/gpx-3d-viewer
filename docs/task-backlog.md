@@ -78,3 +78,4 @@
 | 2026-10-19 | 新增 `android-native/` 原生 Android 工程骨架，包含模型、GPX 解析、导航匹配、Manifest、MainActivity 和 JVM 测试入口；本地 Kotlin 核心编译与 `GpxParserTest` 2/2 通过；Gradle/APK 构建待标准环境 |
 | 2026-10-23 | Android Native Gradle 链路验证：`AGP 8.6.1 + Gradle 8.7` 下 `testDebugUnitTest` 与 `assembleDebug` 通过，生成 Debug APK；仍待真机安装、签名发布、完整地图 UI/定位功能 |
 | 2026-10-24 | Android Native GPX 导入最小 UI 完成：接入文件选择器，解析 GPX 后展示路线名称、点数、距离、累计升降、海拔范围和警告；Android JVM 测试 4/4 通过，Debug APK 构建通过 |
+| 2026-10-24 | Android Native 模拟导航最小 UI 完成：导入后可点击模拟定位推进，展示导航状态、距路线距离、行点里程、偏航提醒和下一参考点；Android JVM 测试 7/7 通过，Debug APK 构建通过 |

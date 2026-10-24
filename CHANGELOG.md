@@ -1,5 +1,42 @@
 # 更新日志
 
+## v0.3.8 - 2026-10-24
+
+Android Native 模拟导航匹配最小 UI。
+
+---
+
+### 📱 新增
+
+| 项 | 说明 |
+|---|---|
+| **模拟导航入口** | 导入 GPX 后，点击现有定位按钮可逐个使用路线参考点生成模拟定位 |
+| **导航状态展示** | 显示沿路线/偏航/不确定状态、距路线距离、行点里程、偏航提醒和下一参考点 |
+| **状态格式模块** | 新增 `GuidanceStatus.kt`，集中处理导航匹配结果文案和下一参考点选择 |
+| **JVM 单测补充** | 新增 `GuidanceStatusTest.kt`，覆盖下一参考点选择、沿路线状态和偏航提醒文案 |
+
+---
+
+### 🧪 验证结果
+
+| 测试 | 结果 |
+|---|---|
+| Android Gradle `testDebugUnitTest` | 通过（`BUILD SUCCESSFUL`，`27 actionable tasks: 3 executed, 24 up-to-date`，7 个测试） |
+| Android Gradle `assembleDebug` | 通过（`BUILD SUCCESSFUL`，`34 actionable tasks: 1 executed, 33 up-to-date`） |
+| 桌面前端测试 | 68/68 通过 |
+| 后端测试 | 6/6 通过 |
+| TypeScript 构建 | 通过 |
+
+---
+
+### 🚧 当前边界
+
+- Android Native 仍不含地图渲染，模拟导航只按导入路线点逐个生成测试定位。
+- 未接入前台定位服务、权限请求、真实 GPS 持续定位、通知或振动。
+- Debug APK 未真机安装、未签名发布、未混淆，也未上传正式渠道。
+
+---
+
 ## v0.3.7 - 2026-10-24
 
 Android Native GPX 导入与路线统计最小 UI。
