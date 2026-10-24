@@ -2,7 +2,7 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.6 桌面浏览器原型 + Android 最小闭环原型 + Android Native 工程骨架与 Gradle 构建链路验证
+**当前版本：** v0.3.7 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计 UI
 
 ---
 
@@ -12,7 +12,7 @@ GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹�
 |---|---|---|
 | 桌面浏览器版 | `/` | ✅ 完整功能 |
 | Android 客户端 | `android-app/` | 🔶 最小闭环（定位→匹配→告警） |
-| Android Native | `android-native/` | 🔶 原生工程骨架 + Gradle 单测/APK 构建验证 |
+| Android Native | `android-native/` | 🔶 原生工程骨架 + GPX 导入统计 UI + Gradle 单测/APK 构建验证 |
 | 轻量后端 | `server/` | ✅ 高德代理 + 静态服务 |
 | 任务看板 | `docs/task-backlog.md` | 📋 P0 全部完成 |
 
@@ -205,7 +205,7 @@ flutter build apk    # 构建 APK
 | R-106 轨迹记录导出 | 🟢完成 | 浏览器定位记录 + GPX 导出 |
 | R-112 外部地图导航 | 🟢完成 | 高德/百度/Apple/Google 四种地图服务 |
 | T-09 性能测试 | 🟡进行中 | 桌面解析基准已记录；真机性能待补 |
-| Android Native 骨架 | 🔶进行中 | Gradle `testDebugUnitTest` / `assembleDebug` 已跑通；UI/定位/导入/发布链路待实现 |
+| Android Native GPX 导入 | 🟢完成 | Android Native 文件选择、GPX 解析与统计摘要 UI；地图/定位/发布仍待实现 |
 
 ---
 
@@ -219,6 +219,7 @@ flutter build apk    # 构建 APK
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-10-24 | v0.3.7 | Android Native GPX 文件导入与路线统计 UI；新增 `RouteSummary` 与 2 个 JVM 测试 |
 | 2026-10-23 | v0.3.6 | Android Native Gradle 单测与 Debug APK 构建链路验证；补充 Gradle wrapper 与工具链说明 |
 | 2026-10-19 | v0.3.5 | Android Native 工程骨架：Manifest、MainActivity、Kotlin 核心编译验证 |
 | 2026-10-19 | v0.3.3 | T-09 桌面 GPX 解析性能基准（1万/5万/20万点） |

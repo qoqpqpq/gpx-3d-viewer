@@ -1,5 +1,42 @@
 # 更新日志
 
+## v0.3.7 - 2026-10-24
+
+Android Native GPX 导入与路线统计最小 UI。
+
+---
+
+### 📱 新增
+
+| 项 | 说明 |
+|---|---|
+| **GPX 文件选择** | `MainActivity` 接入 Android Activity Result 文件选择器 |
+| **导入统计展示** | 读取 GPX 后显示名称、轨迹点数、距离、累计升降、海拔范围和警告 |
+| **摘要格式模块** | 新增 `RouteSummary.kt`，将 `TrackStats` 转为用户可读中文摘要 |
+| **界面重构** | `activity_main.xml` 增加导入按钮、状态区、滚动统计区和警告区 |
+
+---
+
+### 🧪 验证结果
+
+| 测试 | 结果 |
+|---|---|
+| Android Gradle `testDebugUnitTest` | 通过（`BUILD SUCCESSFUL`，`4 actionable tasks: 4 executed`，4 个测试） |
+| Android Gradle `assembleDebug` | 通过（`BUILD SUCCESSFUL`，`34 actionable tasks: 8 executed, 26 up-to-date`） |
+| 桌面前端测试 | 68/68 通过 |
+| 后端测试 | 6/6 通过 |
+| TypeScript 构建 | 通过 |
+
+---
+
+### 🚧 当前边界
+
+- Android Native 仅完成 GPX 导入与统计展示，不包含地图渲染、定位、持久化或导航
+- 尚未真机安装验证文件选择器在不同厂商文件管理器中的兼容性
+- Debug APK 未签名发布、未混淆，也未上传正式渠道
+
+---
+
 ## v0.3.6 - 2026-10-23
 
 Android Native Gradle 单测与 Debug APK 构建链路验证。

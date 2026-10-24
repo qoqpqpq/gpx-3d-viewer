@@ -76,4 +76,5 @@
 | 2026-10-19 | R-106 完成：浏览器定位轨迹记录与 GPX 导出，新增 TrackRecorder/gpx-export 模块和 16 个测试，测试总数 68 个 |
 | 2026-10-19 | T-09 部分完成：新增桌面 GPX 解析性能基准 benchmark/gpx-parse.bench.test.ts，记录 1万/5万/20万点解析结果；真机内存、帧率仍待补 |
 | 2026-10-19 | 新增 `android-native/` 原生 Android 工程骨架，包含模型、GPX 解析、导航匹配、Manifest、MainActivity 和 JVM 测试入口；本地 Kotlin 核心编译与 `GpxParserTest` 2/2 通过；Gradle/APK 构建待标准环境 |
-| 2026-10-23 | Android Native Gradle 链路验证：`AGP 8.6.1 + Gradle 8.7` 下 `testDebugUnitTest` 与 `assembleDebug` 通过，生成 Debug APK；仍待真机安装、签名发布、完整地图 UI/定位/导入功能 |
+| 2026-10-23 | Android Native Gradle 链路验证：`AGP 8.6.1 + Gradle 8.7` 下 `testDebugUnitTest` 与 `assembleDebug` 通过，生成 Debug APK；仍待真机安装、签名发布、完整地图 UI/定位功能 |
+| 2026-10-24 | Android Native GPX 导入最小 UI 完成：接入文件选择器，解析 GPX 后展示路线名称、点数、距离、累计升降、海拔范围和警告；Android JVM 测试 4/4 通过，Debug APK 构建通过 |

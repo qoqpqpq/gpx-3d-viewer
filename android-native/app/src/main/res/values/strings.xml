@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_status">山径 Android Native</string>
+    <string name="import_gpx">导入 GPX</string>
+    <string name="start_location">开始定位（待实现）</string>
+    <string name="no_route_loaded">未加载路线：点击“导入 GPX”开始。</string>
+</resources>
