@@ -37,15 +37,17 @@ cd android-native
 - `AGP 8.6.1 + Gradle 8.7 + assembleDebug` 成功：`BUILD SUCCESSFUL`，`34 actionable tasks: 4 executed, 30 up-to-date`
 - Debug APK 生成：`app/build/outputs/apk/debug/app-debug.apk`
 - Kotlin 核心代码可编译并参与 Android Gradle 单测链路
-- Android JVM 测试通过：12 个测试
+- Android JVM 测试通过：19 个测试
 
 ## 修复记录
 
 - `Guidance.localXY` 曾用 `radians() × 111320/110574`（度/米常量），把度当作弧度使用导致距离被低估约 57.3 倍；已改为 `radians() × 6371008.8`（地球平均半径，与桌面端 `geo.ts` 一致），并新增 `GuidanceTest` 5 个用例覆盖该公式与偏航状态机。
+- `GpxParser.buildTrack` 的 `previousPoint` 原声明在段外，导致把上一段最后一点与下一段第一点之间的间隔计入总距离，与“断口不连线、不计距离”语义冲突；已改为段内声明，仅统计段内相邻点距离，与桌面端 `gpx.ts` 一致。
+- `GpxParser` 原用 `token.attrs["name"]` 读航点名称，但 GPX 标准航点名在子元素 `<wpt><name>…</name>`，导致所有航点恒显示“未命名航点”；已改为捕获子 `<name>` 文本，与桌面端 `gpx.ts` 一致。新增 `GpxParserRegressionTest` 7 个用例覆盖上述回归。
 
 ## 当前限制
 
 - UI 已支持 GPX 导入、统计摘要和模拟导航匹配展示，仍不含地图渲染。
 - 模拟导航只按导入路线点逐个构造测试定位，未接入前台定位服务和权限请求。
 - 当前 APK 为 Gradle Debug 构建，未做真机安装、签名发布、混淆或正式渠道包验证。
-- GPX 解析器为原生 Kotlin 初版，边界口径参考桌面端，但后续应补充更多回归用例。
+- GPX 解析器为原生 Kotlin 初版，边界口径已与桌面端 `gpx.ts` 对齐（跨段不连线不计距离、航点名称取自子元素），并补充回归用例；真机/大文件边界仍待设备验证。

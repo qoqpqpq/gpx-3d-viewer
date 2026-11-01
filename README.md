@@ -2,7 +2,7 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.10 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI
+**当前版本：** v0.3.11 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI
 
 ---
 
@@ -206,7 +206,7 @@ flutter build apk    # 构建 APK
 | R-112 外部地图导航 | 🟢完成 | 高德/百度/Apple/Google 四种地图服务 |
 | T-09 性能测试 | 🟡进行中 | 桌面解析+几何精简基准已记录（10k/50k/200k 点）；真机帧率/内存待补 |
 | Android Native GPX 导入 | 🟢完成 | Android Native 文件选择、GPX 解析与统计摘要 UI；地图/定位/发布仍待实现 |
-| Android Native 模拟导航 | 🟢完成 | 导入后可模拟点击推进导航匹配状态、下一参考点与偏航提示；`Guidance.localXY` 距离公式已修复；真实 GPS 持续定位仍待实现 |
+| Android Native 模拟导航 | 🟢完成 | 导入后可模拟点击推进导航匹配状态、下一参考点与偏航提示；`Guidance.localXY` 距离公式已修复；`GpxParser` 跨段距离与航点名称缺陷已修复；真实 GPS 持续定位仍待实现 |
 
 ---
 
@@ -220,6 +220,7 @@ flutter build apk    # 构建 APK
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-02 | v0.3.11 | Android Native 修复 `GpxParser` 跨段距离误计与航点名称读取缺陷；新增 `GpxParserRegressionTest` 7 个用例；Android JVM 19/19 |
 | 2026-11-01 | v0.3.10 | Android Native 修复 `Guidance.localXY` 度/弧度距离低估约 57.3 倍缺陷；新增 `GuidanceTest` 5 个用例；Android JVM 12/12 |
 | 2026-11-01 | v0.3.9 | T-09 桌面基准补强：新增 2D 几何精简基准与内存测量（--expose-gc），记录 10k/50k/200k 点结果 |
 | 2026-10-24 | v0.3.8 | Android Native 模拟导航匹配最小 UI；新增 `GuidanceStatus` 与 3 个 JVM 测试 |

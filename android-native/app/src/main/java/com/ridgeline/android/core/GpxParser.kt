@@ -28,6 +28,9 @@ object GpxParser {
         var segments = mutableListOf<List<GeoPoint>>()
         var segment = mutableListOf<GeoPoint>()
         var pointCount = 0
+        var pendingWaypoint: GeoPoint? = null
+        var pendingWaypointName: String? = null
+        var captureWaypointName = false
 
         fun addPoint(point: GeoPoint) {
             pointCount++
@@ -85,20 +88,33 @@ object GpxParser {
                 }
                 token.name == "trkseg" && token.closing -> flushSegment()
                 token.name == "name" -> {
+                    // Only a text-carrier token carries the element text; the open/close
+                    // tokens have text=null and must not clobber an already-captured name.
                     val text = token.text?.trim().orEmpty()
                     when (currentKind) {
-                        Kind.TRACK -> trackName = text
-                        Kind.ROUTE -> routeName = text
-                        null -> Unit
+                        Kind.TRACK -> if (token.text != null) trackName = text
+                        Kind.ROUTE -> if (token.text != null) routeName = text
+                        null -> if (token.text != null && captureWaypointName) pendingWaypointName = text
                     }
+                }
+                token.name == "wpt" && token.closing -> {
+                    val name = pendingWaypointName.orEmpty().ifEmpty { "未命名航点" }.take(200)
+                    pendingWaypoint?.let { waypoints.add(Waypoint(it.lat, it.lon, it.ele, it.time, name)) }
+                    pendingWaypoint = null
+                    pendingWaypointName = null
+                    captureWaypointName = false
                 }
                 token.name in setOf("trkpt", "rtept", "wpt") -> {
                     val point = readPoint(token.attrs)
                     when (token.name) {
                         "wpt" -> {
+                            // Only adopt a waypoint when its opening tag carries valid coords.
+                            // The tokenizer re-emits the previous tag with text but empty attrs,
+                            // so a null point must NOT clear an already-pending waypoint.
                             if (point != null) {
-                                val name = token.attrs["name"]?.trim().orEmpty()
-                                waypoints.add(Waypoint(point.lat, point.lon, point.ele, point.time, name.ifEmpty { "未命名航点" }.take(200)))
+                                pendingWaypoint = point
+                                pendingWaypointName = token.attrs["name"]?.trim()?.ifEmpty { null }
+                                captureWaypointName = true
                             }
                         }
                         else -> if (point != null) addPoint(point)
@@ -139,10 +155,10 @@ object GpxParser {
         var trackMax = Double.NEGATIVE_INFINITY
         var jumpCount = 0
         var globalIndex = 0
-        var previousPoint: GeoPoint? = null
 
         val segments = rawSegments.mapIndexed { si, seg ->
             var anchor: Double? = null
+            var previousPoint: GeoPoint? = null
             seg.map { p ->
                 previousPoint?.let { previous ->
                     val gap = distance(previous, p)

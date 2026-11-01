@@ -1,5 +1,40 @@
 # 更新日志
 
+## v0.3.11 - 2026-11-02
+
+Android Native 修复 GPX 解析器跨段距离与航点名称缺陷，并补充回归用例。
+
+---
+
+### 🐛 修复
+
+| 项 | 说明 |
+|---|---|
+| **跨段距离误计** | `GpxParser.buildTrack` 的 `previousPoint` 原声明在段外，导致把上一段最后一点与下一段第一点之间的间隔（可长达上百公里）计入总距离，与“断口不连线、不计距离”的语义冲突；已改为段内声明，仅统计段内相邻点距离，与桌面 `gpx.ts` 口径一致 |
+| **航点名称读取错误** | 原用 `token.attrs["name"]` 读名称，但 GPX 标准航点名在子元素 `<wpt><name>…</name>`，导致所有航点恒显示“未命名航点”；已改为在 `<wpt>` 打开时记录待定航点，并从子 `<name>` 文本捕获名称，与桌面 `gpx.ts` 一致 |
+
+---
+
+### 🧪 新增测试
+
+| 项 | 说明 |
+|---|---|
+| **`GpxParserRegressionTest.kt`** | 新增 7 个 JVM 回归用例：跨段不连线不计距离、多段独立求和、越界坐标断段、缺高程置空、子元素航点名、单点空轨迹拒绝、20MB 超限拒绝 |
+
+---
+
+### ✅ 验证结果
+
+| 测试 | 结果 |
+|---|---|
+| Android Gradle `testDebugUnitTest` | 通过（`BUILD SUCCESSFUL`，19 个测试：原有 12 + 新增 7） |
+| Android Gradle `assembleDebug` | 通过（`BUILD SUCCESSFUL`，`34 actionable tasks: 4 executed, 30 up-to-date`） |
+| 桌面 `npm test` | 通过（68/68） |
+| 桌面 `npm run test:server` | 通过（6/6） |
+| 桌面 `npm run build` | 通过（`✓ built in 1.53s`） |
+
+---
+
 ## v0.3.10 - 2026-11-01
 
 Android Native 修复导航匹配距离计算缺陷并补充核心单测。
