@@ -80,3 +80,4 @@
 | 2026-10-23 | Android Native Gradle 链路验证：`AGP 8.6.1 + Gradle 8.7` 下 `testDebugUnitTest` 与 `assembleDebug` 通过，生成 Debug APK；仍待真机安装、签名发布、完整地图 UI/定位功能 |
 | 2026-10-24 | Android Native GPX 导入最小 UI 完成：接入文件选择器，解析 GPX 后展示路线名称、点数、距离、累计升降、海拔范围和警告；Android JVM 测试 4/4 通过，Debug APK 构建通过 |
 | 2026-10-24 | Android Native 模拟导航最小 UI 完成：导入后可点击模拟定位推进，展示导航状态、距路线距离、行点里程、偏航提醒和下一参考点；Android JVM 测试 7/7 通过，Debug APK 构建通过 |
+| 2026-11-01 | Android Native 修复 `Guidance.localXY` 度/弧度距离低估约 57.3 倍缺陷（改用地球平均半径 6371008.8，与桌面 `geo.ts` 一致）；新增 `GuidanceTest` 5 个用例覆盖公式与偏航状态机；Android JVM 测试 12/12 通过，Debug APK 构建通过 |

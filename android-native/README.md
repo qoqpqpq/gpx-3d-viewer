@@ -37,7 +37,11 @@ cd android-native
 - `AGP 8.6.1 + Gradle 8.7 + assembleDebug` 成功：`BUILD SUCCESSFUL`，`34 actionable tasks: 4 executed, 30 up-to-date`
 - Debug APK 生成：`app/build/outputs/apk/debug/app-debug.apk`
 - Kotlin 核心代码可编译并参与 Android Gradle 单测链路
-- Android JVM 测试通过：7 个测试
+- Android JVM 测试通过：12 个测试
+
+## 修复记录
+
+- `Guidance.localXY` 曾用 `radians() × 111320/110574`（度/米常量），把度当作弧度使用导致距离被低估约 57.3 倍；已改为 `radians() × 6371008.8`（地球平均半径，与桌面端 `geo.ts` 一致），并新增 `GuidanceTest` 5 个用例覆盖该公式与偏航状态机。
 
 ## 当前限制
 

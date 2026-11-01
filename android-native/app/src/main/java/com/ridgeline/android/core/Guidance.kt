@@ -138,11 +138,13 @@ class Guidance {
     }
 
     fun localXY(point: TrackPoint, fix: LocationFix): Pair<Double, Double> {
+        // Mean Earth radius in metres, matching the desktop geo.ts localXY.
+        val earthRadius = 6371008.8
         val lat0 = Math.toRadians(fix.lat)
         val lat = Math.toRadians(point.lat)
         val lon = Math.toRadians(point.lon - fix.lon)
-        val x = lon * 111320.0 * cos(lat0)
-        val y = (lat - lat0) * 110574.0
+        val x = lon * earthRadius * cos(lat0)
+        val y = (lat - lat0) * earthRadius
         return Pair(x, y)
     }
 }

@@ -1,5 +1,36 @@
 # 更新日志
 
+## v0.3.10 - 2026-11-01
+
+Android Native 修复导航匹配距离计算缺陷并补充核心单测。
+
+---
+
+### 🐛 修复
+
+| 项 | 说明 |
+|---|---|
+| **`Guidance.localXY` 距离低估** | 曾用 `radians() × 111320/110574`（度/米常量），把度当作弧度使用导致所有匹配距离被低估约 57.3 倍；已改为 `radians() × 6371008.8`（地球平均半径，与桌面 `geo.ts` 一致） |
+
+---
+
+### 🧪 新增测试
+
+| 项 | 说明 |
+|---|---|
+| **`GuidanceTest.kt`** | 新增 5 个 JVM 用例：`localXY` 米制正确性、沿路线匹配、偏航距离量级、无效精度/过期时间戳拒绝、偏航告警触发与恢复 |
+
+---
+
+### ✅ 验证结果
+
+| 测试 | 结果 |
+|---|---|
+| Android Gradle `testDebugUnitTest` | 通过（`BUILD SUCCESSFUL`，12 个测试） |
+| Android Gradle `assembleDebug` | 通过（`BUILD SUCCESSFUL`，`34 actionable tasks: 4 executed, 30 up-to-date`） |
+
+---
+
 ## v0.3.9 - 2026-11-01
 
 T-09 桌面性能基准补强。
