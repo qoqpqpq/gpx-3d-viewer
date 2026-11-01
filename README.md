@@ -204,7 +204,7 @@ flutter build apk    # 构建 APK
 | R-107 路线搜索排序 | 🟢完成 | 搜索过滤 + 多排序 + 日期显示 |
 | R-106 轨迹记录导出 | 🟢完成 | 浏览器定位记录 + GPX 导出 |
 | R-112 外部地图导航 | 🟢完成 | 高德/百度/Apple/Google 四种地图服务 |
-| T-09 性能测试 | 🟡进行中 | 桌面解析基准已记录；真机性能待补 |
+| T-09 性能测试 | 🟡进行中 | 桌面解析+几何精简基准已记录（10k/50k/200k 点）；真机帧率/内存待补 |
 | Android Native GPX 导入 | 🟢完成 | Android Native 文件选择、GPX 解析与统计摘要 UI；地图/定位/发布仍待实现 |
 | Android Native 模拟导航 | 🟢完成 | 导入后可模拟点击推进导航匹配状态、下一参考点与偏航提示；真实 GPS 持续定位仍待实现 |
 
@@ -220,6 +220,7 @@ flutter build apk    # 构建 APK
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-01 | v0.3.9 | T-09 桌面基准补强：新增 2D 几何精简基准与内存测量（--expose-gc），记录 10k/50k/200k 点结果 |
 | 2026-10-24 | v0.3.8 | Android Native 模拟导航匹配最小 UI；新增 `GuidanceStatus` 与 3 个 JVM 测试 |
 | 2026-10-24 | v0.3.7 | Android Native GPX 文件导入与路线统计 UI；新增 `RouteSummary` 与 2 个 JVM 测试 |
 | 2026-10-23 | v0.3.6 | Android Native Gradle 单测与 Debug APK 构建链路验证；补充 Gradle wrapper 与工具链说明 |
