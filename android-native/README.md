@@ -37,13 +37,14 @@ cd android-native
 - `AGP 8.6.1 + Gradle 8.7 + assembleDebug` 成功：`BUILD SUCCESSFUL`，`34 actionable tasks: 4 executed, 30 up-to-date`
 - Debug APK 生成：`app/build/outputs/apk/debug/app-debug.apk`
 - Kotlin 核心代码可编译并参与 Android Gradle 单测链路
-- Android JVM 测试通过：19 个测试
+- Android JVM 测试通过：25 个测试
 
 ## 修复记录
 
 - `Guidance.localXY` 曾用 `radians() × 111320/110574`（度/米常量），把度当作弧度使用导致距离被低估约 57.3 倍；已改为 `radians() × 6371008.8`（地球平均半径，与桌面端 `geo.ts` 一致），并新增 `GuidanceTest` 5 个用例覆盖该公式与偏航状态机。
 - `GpxParser.buildTrack` 的 `previousPoint` 原声明在段外，导致把上一段最后一点与下一段第一点之间的间隔计入总距离，与“断口不连线、不计距离”语义冲突；已改为段内声明，仅统计段内相邻点距离，与桌面端 `gpx.ts` 一致。
 - `GpxParser` 原用 `token.attrs["name"]` 读航点名称，但 GPX 标准航点名在子元素 `<wpt><name>…</name>`，导致所有航点恒显示“未命名航点”；已改为捕获子 `<name>` 文本，与桌面端 `gpx.ts` 一致。新增 `GpxParserRegressionTest` 7 个用例覆盖上述回归。
+- `GpxParser.readPoint` 原只从 `lat`/`lon` 属性读取，从未解析子元素 `<ele>`/`<time>`，导致所有轨迹点高程与时间恒为 null，`ascent`/`descent`/`min`/`max`/`duration` 恒为 null；已改为延迟到子元素读取后再落库，与桌面端 `gpx.ts`（读 `n.ele`/`n.time`）一致。高程锚点原在每点更新，导致缓坡爬升不计入爬升；已改为与桌面端一致的 3m 迟滞（锚点仅在 `abs(delta)>=3` 时推进）。新增 `GpxParserChildElementTest` 6 个用例覆盖上述回归。
 
 ## 当前限制
 

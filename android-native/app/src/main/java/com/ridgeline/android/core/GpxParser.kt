@@ -28,7 +28,8 @@ object GpxParser {
         var segments = mutableListOf<List<GeoPoint>>()
         var segment = mutableListOf<GeoPoint>()
         var pointCount = 0
-        var pendingWaypoint: GeoPoint? = null
+        var pendingPoint: GeoPoint? = null
+        var pendingWpt = false
         var pendingWaypointName: String? = null
         var captureWaypointName = false
 
@@ -36,6 +37,22 @@ object GpxParser {
             pointCount++
             require(pointCount <= MAX_POINTS) { "轨迹超过 200,000 点，请先分轨导出。" }
             segment.add(point)
+        }
+
+        fun finalizePoint() {
+            val point = pendingPoint
+            if (point != null) {
+                if (pendingWpt) {
+                    val name = pendingWaypointName.orEmpty().ifEmpty { "未命名航点" }.take(200)
+                    waypoints.add(Waypoint(point.lat, point.lon, point.ele, point.time, name))
+                } else {
+                    addPoint(point)
+                }
+            }
+            pendingPoint = null
+            pendingWpt = false
+            pendingWaypointName = null
+            captureWaypointName = false
         }
 
         fun flushSegment() {
@@ -60,6 +77,7 @@ object GpxParser {
         for (token in tokens) {
             when {
                 token.name == "trk" && !token.closing -> {
+                    finalizePoint()
                     flushCandidate(currentKind ?: Kind.TRACK)
                     currentKind = Kind.TRACK
                     trackName = ""
@@ -67,11 +85,13 @@ object GpxParser {
                     segment = mutableListOf()
                 }
                 token.name == "trk" && token.closing -> {
+                    finalizePoint()
                     flushCandidate(Kind.TRACK)
                     currentKind = null
                     trackName = ""
                 }
                 token.name == "route" && !token.closing -> {
+                    finalizePoint()
                     flushCandidate(currentKind ?: Kind.ROUTE)
                     currentKind = Kind.ROUTE
                     routeName = ""
@@ -79,14 +99,19 @@ object GpxParser {
                     segment = mutableListOf()
                 }
                 token.name == "route" && token.closing -> {
+                    finalizePoint()
                     flushCandidate(Kind.ROUTE)
                     currentKind = null
                     routeName = ""
                 }
                 token.name == "trkseg" && !token.closing -> {
+                    finalizePoint()
                     segment = mutableListOf()
                 }
-                token.name == "trkseg" && token.closing -> flushSegment()
+                token.name == "trkseg" && token.closing -> {
+                    finalizePoint()
+                    flushSegment()
+                }
                 token.name == "name" -> {
                     // Only a text-carrier token carries the element text; the open/close
                     // tokens have text=null and must not clobber an already-captured name.
@@ -97,32 +122,42 @@ object GpxParser {
                         null -> if (token.text != null && captureWaypointName) pendingWaypointName = text
                     }
                 }
+                token.name == "ele" -> {
+                    // Child elevation of a pending point: only text-carrier tokens carry the value.
+                    if (token.text != null && pendingPoint != null) {
+                        token.text.trim().toDoubleOrNull()?.let { pendingPoint = pendingPoint!!.copy(ele = it) }
+                    }
+                }
+                token.name == "time" -> {
+                    // Child timestamp of a pending point (ISO-8601, e.g. 2026-11-02T07:00:00Z).
+                    if (token.text != null && pendingPoint != null) {
+                        val parsed = runCatching { Instant.parse(token.text.trim()) }.getOrNull()
+                        if (parsed != null) pendingPoint = pendingPoint!!.copy(time = parsed.toEpochMilli())
+                    }
+                }
                 token.name == "wpt" && token.closing -> {
-                    val name = pendingWaypointName.orEmpty().ifEmpty { "未命名航点" }.take(200)
-                    pendingWaypoint?.let { waypoints.add(Waypoint(it.lat, it.lon, it.ele, it.time, name)) }
-                    pendingWaypoint = null
-                    pendingWaypointName = null
-                    captureWaypointName = false
+                    finalizePoint()
                 }
                 token.name in setOf("trkpt", "rtept", "wpt") -> {
+                    // A new point opening tag finalizes any previous pending point, then adopts
+                    // this one. Only when the opening tag carries valid coords do we start a
+                    // pending point (the tokenizer re-emits the previous tag with text but empty
+                    // attrs, so a null point must NOT clear an already-pending point).
                     val point = readPoint(token.attrs)
-                    when (token.name) {
-                        "wpt" -> {
-                            // Only adopt a waypoint when its opening tag carries valid coords.
-                            // The tokenizer re-emits the previous tag with text but empty attrs,
-                            // so a null point must NOT clear an already-pending waypoint.
-                            if (point != null) {
-                                pendingWaypoint = point
-                                pendingWaypointName = token.attrs["name"]?.trim()?.ifEmpty { null }
-                                captureWaypointName = true
-                            }
+                    if (point != null) {
+                        finalizePoint()
+                        pendingPoint = point
+                        pendingWpt = token.name == "wpt"
+                        if (pendingWpt) {
+                            pendingWaypointName = token.attrs["name"]?.trim()?.ifEmpty { null }
+                            captureWaypointName = true
                         }
-                        else -> if (point != null) addPoint(point)
                     }
                 }
             }
         }
 
+        finalizePoint()
         flushCandidate(currentKind ?: Kind.TRACK)
 
         return tracks
@@ -177,12 +212,17 @@ object GpxParser {
                         elevationCount++
                         trackMin = minOf(trackMin, ele)
                         trackMax = maxOf(trackMax, ele)
+                        // 3m hysteresis, matching desktop gpx.ts: the anchor only advances
+                        // once a change >= 3m is observed, so a gradual 1m-step climb still
+                        // accumulates (100->103 gives +3), not reset each step.
                         val previousAnchor = anchor
-                        anchor = ele
-                        if (previousAnchor != null) {
+                        if (previousAnchor == null) {
+                            anchor = ele
+                        } else {
                             val delta = ele - previousAnchor
                             if (abs(delta) >= 3.0) {
                                 if (delta > 0) ascent += delta else descent -= delta
+                                anchor = ele
                             }
                         }
                     }
@@ -224,20 +264,6 @@ object GpxParser {
             ),
             warnings = warnings,
         )
-    }
-
-    private fun depthLimit(xml: String): Int {
-        val stripped = xml.replace(Regex("<!--.*?-->"), "").replace(Regex("<!\\[CDATA\\[.*?\\]\\]>"), "")
-        var depth = 0
-        var maxDepth = 0
-        for (match in Regex("<(/?)([a-zA-Z_][^>]*?)(/?)>").findAll(stripped)) {
-            val closing = match.groupValues[1] == "/"
-            val selfClosing = match.groupValues[3] == "/"
-            if (selfClosing) continue
-            if (closing) depth-- else depth++
-            maxDepth = maxOf(maxDepth, depth)
-        }
-        return maxDepth
     }
 
     private fun tokenize(xml: String): List<Token> {

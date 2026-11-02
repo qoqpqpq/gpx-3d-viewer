@@ -1,5 +1,41 @@
 # 更新日志
 
+## v0.3.12 - 2026-11-02
+
+Android Native 修复 GPX 解析器子元素高程/时间读取与升降迟滞缺陷，使解析结果与桌面端口径一致。
+
+---
+
+### 🐛 修复
+
+| 项 | 说明 |
+|---|---|
+| **子元素高程/时间未读取** | `GpxParser.readPoint` 只从 `lat`/`lon` 属性读取，从未解析子元素 `<ele>`/`<time>`，导致所有轨迹点高程与时间恒为 null，`ascent`/`descent`/`min`/`max`/`duration` 恒为 null；已改为延迟到子元素读取后再落库，与桌面端 `gpx.ts`（读 `n.ele`/`n.time`）一致 |
+| **升降累计无迟滞** | 高程锚点原在每点更新，导致缓坡爬升（如 100→103 逐米）不计入爬升；已改为桌面端相同的 3m 迟滞（锚点仅在 `abs(delta)>=3` 时推进），与桌面端 `gpx.ts` 一致 |
+| **死代码** | 移除未使用的 `depthLimit` 函数及多余的安全调用 |
+
+---
+
+### 🧪 新增测试
+
+| 项 | 说明 |
+|---|---|
+| **`GpxParserChildElementTest.kt`** | 新增 6 个 JVM 回归用例：子元素缓坡爬升累计、缓坡下降累计、单次跳跃累计、子元素时间与历时计算、航点子元素高程与名称、缺高程置空 |
+
+---
+
+### ✅ 验证结果
+
+| 测试 | 结果 |
+|---|---|
+| Android Gradle `testDebugUnitTest` | 通过（`BUILD SUCCESSFUL`，25 个测试：原有 19 + 新增 6） |
+| Android Gradle `assembleDebug` | 通过（`BUILD SUCCESSFUL`） |
+| 桌面 `npm test` | 通过（68/68） |
+| 桌面 `npm run test:server` | 通过（6/6） |
+| 桌面 `npm run build` | 通过（`✓ built in 1.67s`） |
+
+---
+
 ## v0.3.11 - 2026-11-02
 
 Android Native 修复 GPX 解析器跨段距离与航点名称缺陷，并补充回归用例。

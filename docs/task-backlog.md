@@ -82,3 +82,4 @@
 | 2026-10-24 | Android Native 模拟导航最小 UI 完成：导入后可点击模拟定位推进，展示导航状态、距路线距离、行点里程、偏航提醒和下一参考点；Android JVM 测试 7/7 通过，Debug APK 构建通过 |
 | 2026-11-01 | Android Native 修复 `Guidance.localXY` 度/弧度距离低估约 57.3 倍缺陷（改用地球平均半径 6371008.8，与桌面 `geo.ts` 一致）；新增 `GuidanceTest` 5 个用例覆盖公式与偏航状态机；Android JVM 测试 12/12 通过，Debug APK 构建通过 |
 | 2026-11-02 | Android Native 修复 GPX 解析器跨段距离误计（`previousPoint` 原在段外，把段间上百公里间隔计入总距离，与“断口不连线”语义冲突；改为段内声明，与桌面 `gpx.ts` 一致）和航点名称读取错误（原读属性，应读子元素 `<wpt><name>`，导致恒为“未命名航点”；改为捕获子元素文本）；新增 `GpxParserRegressionTest` 7 个用例；Android JVM 测试 19/19 通过，Debug APK 构建通过 |
+| 2026-11-02 | Android Native 修复 GPX 解析器子元素高程/时间未读取（`readPoint` 只读 `lat`/`lon` 属性，从不读子元素 `<ele>`/`<time>`，导致高程/时间恒为 null、`ascent`/`descent`/`min`/`max`/`duration` 恒为 null；改为延迟到子元素读取后再落库，与桌面 `gpx.ts` 一致）和升降累计无迟滞（高程锚点原每点更新，缓坡爬升不计入爬升；改为与桌面一致的 3m 迟滞，锚点仅在 `abs(delta)>=3` 时推进）；新增 `GpxParserChildElementTest` 6 个用例；Android JVM 测试 25/25 通过，Debug APK 构建通过 |
