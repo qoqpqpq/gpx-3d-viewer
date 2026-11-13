@@ -1,0 +1,26 @@
+[Unit]
+Description=gpx-3d-viewer auto-cycle: one development round (PM agent)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/gpx-3d-viewer
+# dsh 需要能找到 $HOME/.dsh（凭证/会话），显式注入
+Environment=HOME=/home/ubuntu
+Environment=DSH_HOME=/home/ubuntu/.dsh
+Environment=GIT_TERMINAL_PROMPT=0
+# 单轮硬超时 40min（脚本内 SOFT 20min / HARD 40min）
+Environment=SOFT_TIMEOUT=1200
+Environment=HARD_TIMEOUT=2400
+ExecStart=/home/ubuntu/gpx-3d-viewer/scripts/autocycle/run-cycle.sh
+# 超时兜底：service 层再卡一道 45min
+TimeoutStartSec=2700
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gpx-autocycle
+
+[Install]
+WantedBy=multi-user.target

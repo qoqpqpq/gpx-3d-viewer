@@ -15,3 +15,6 @@ android-native/local.properties
 android-native/.gradle/
 android-native/build/
 android-native/app/build/
+
+# 自动化循环运行时数据（状态机/锁/审计/归档）—— 不入库，见 docs/auto-cycle/CHARTER.md §6
+state/

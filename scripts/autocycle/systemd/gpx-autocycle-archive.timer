@@ -1,0 +1,12 @@
+[Unit]
+Description=gpx-3d-viewer auto-cycle: daily 00:00 archive trigger
+
+[Timer]
+# 每日 00:00 收尾归档 (CHARTER §5)
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+RandomizedDelaySec=0
+Unit=gpx-autocycle-archive.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=gpx-3d-viewer auto-cycle: daily 00:00 archive & sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/gpx-3d-viewer
+Environment=HOME=/home/ubuntu
+Environment=DSH_HOME=/home/ubuntu/.dsh
+Environment=GIT_TERMINAL_PROMPT=0
+ExecStart=/home/ubuntu/gpx-3d-viewer/scripts/autocycle/archive-daily.sh
+TimeoutStartSec=1800
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gpx-archive
+
+[Install]
+WantedBy=multi-user.target

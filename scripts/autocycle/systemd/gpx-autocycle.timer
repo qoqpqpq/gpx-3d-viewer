@@ -1,0 +1,13 @@
+[Unit]
+Description=gpx-3d-viewer auto-cycle: hourly trigger at :20
+
+[Timer]
+# 每整点 20 分触发一轮 (CHARTER §3)
+OnCalendar=*:20:00
+# 若错过（如关机），开机后补跑一次
+Persistent=true
+RandomizedDelaySec=0
+Unit=gpx-autocycle.service
+
+[Install]
+WantedBy=timers.target
