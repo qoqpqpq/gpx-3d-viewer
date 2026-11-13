@@ -72,6 +72,7 @@
 - **当前候选池对自动循环为空**：T-10~T-15 需真机、B-11 需 Flutter/Android SDK、T-16b 需人工存储决策、B-12 需运维侧通知通道选型 → 下一轮若无新增可自动执行项，按 CHARTER §3.5 标 `skipped`，**禁止编造需求填充轮次**。
 - **B-11**（周期 10 新登记，`android-app` 偏航告警链路断裂）为静态可定位的 P1 缺陷，但修复需 Flutter/Android SDK 工具链做编译/构建验证，headless 缺工具链 → 标 `blocked`，禁盲改不可验证代码（R-015）。
 - **周期 13（2026-11-14 00:20，resume）复核**：候选池仍为空，按 §3.5 标 `skipped`（连续第 3 次）。本轮唯一实质产出是定位并登记 **R-018** —— `ls-remote` 实查远端 `feat/auto-cycle` 停在 42acf59（周期 10），周期 11/12/13 提交滞留本地未推送（本地领先 5 提交）；周期 12 归档推送失败（TLS 抖动）被 `archive-daily.sh` 越权误标 `last_run.status=failed`，误触发周期 13 的 `resume` 空转。修法（推送后对账 + 失败路径不覆盖 PM 轮状态 + 补 origin 跟踪引用）需改 `archive-daily.sh`（部署/调度脚本）属 §4.3 高风险变更，**待人工审批，不入自动候选池**。
+- **周期 14（2026-11-14 01:20，new）复核**：候选池仍为空，按 §3.5 标 `skipped`（连续第 4 次）。本轮实质产出是对 **R-018 的两点实查更正**（写入风险台账 R-018 缓解栏，未新增编号）：①根因 (c) 真源为 `remote.origin.fetch` refspec 只声明 `+refs/heads/main:...`，故 `git fetch origin` 永远不会创建 `origin/feat/auto-cycle` 跟踪引用（实跑 fetch rc=0 后仍不存在即证），缓解 ③「仅 fetch 一途无效」，须显式补 refspec 或 `--set-upstream-to`+定向 fetch，且与 archive-daily.sh 一并 §4.3 人工审批；②「本地领先远端 5 提交」**已失效**——`ls-remote` 实查远端 `feat/auto-cycle`=9dfca15 与本地 HEAD 一致，周期 11~13 提交已全部到达远端，提交滞留项自行收敛（推送者未取证）。R-018 仍开放，残留实质缺陷为推送假阴性不复核远端 + 归档失败路径越权覆盖 `last_run.status` + UNPUSHED 判据不可靠。门禁基线复跑全绿：前端 68/68、服务端 8/8、build、guards 通过（扫描 0 文件/调试命中 0）、四方版本 0.3.17、工作树 clean、磁盘 19%。
 - 详见 `docs/auto-cycle/CHARTER.md` §4.2（无可验证验收项不得启动）与 §3.5（无任务标 skipped）。
 
 ---
