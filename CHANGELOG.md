@@ -1,5 +1,39 @@
 # 更新日志
 
+## v0.3.16 - 2026-11-13
+
+**文档漂移收口**（周期 8，new 轮，对应 `docs/task-backlog.md` B-09）。纯文档/版本一致性轮，不改产品代码与对外接口。
+
+---
+
+### 🐛 修复
+
+| 项 | 说明 |
+|---|---|
+| **README 版本号落后于 `package.json`** | README 首屏写 `v0.3.12`，而 `package.json` 已 `0.3.15`（周期 7 收尾即标注此遗留）。本轮统一升到 `0.3.16`，并在 README 首屏注明「版本号以 `package.json` 为唯一真源」，避免再次漂移 |
+| **README 变更记录表缺 v0.3.13–v0.3.15** | README 变更记录表止于 v0.3.12，近三轮（周期 3/5/7 的自动化循环修复）均未登记；补齐 v0.3.13/v0.3.14/v0.3.15 三行 |
+| **`package-lock.json` 版本字段长期未随 `package.json` 同步** | 顶层 `version` 停在 `0.3.12`、`packages[""].version` 停在 `0.3.11`（周期 3/5/7 升版时均未同步）。本轮两处统一到 `0.3.16`，仅动项目自身版本字段、依赖版本不变，无需重装依赖 |
+| **管理文档 §1.2 Git 状态失真** | 原写「当前目录不是 Git 仓库」「分支/提交历史/标签无法查询」，与实际矛盾：仓库存在，远程 `origin` = `github.com/qoqpqpq/gpx-3d-viewer.git`，工作分支 `feat/auto-cycle`（另有 `main`），35 个提交。按实际更正；暂无 tag 一并如实记录 |
+| **管理文档 §5 里程碑与 backlog 完成态脱节** | M1「工程与发布基线」原标「未完成」，但 T-01（Git 基线）/T-02（真实代理联调）/T-07（README 同步）/T-08（自动化质量门禁）在 backlog 均已 🟢完成 → 改「基本达成」；M2「Android 最小链路」原标「未启动」，但 T-04 在 android-app 已达成真机最小闭环 → 改「部分完成」并注明 android-native 仅 SIMULATION |
+| **T-04 真机/模拟界定缺失**（联动 C-01） | §5.1 T-04 补注：`android-app`（Flutter，真实定位 EventChannel）已达真机最小闭环；`android-native` 当前仅 SIMULATION，真机 GNSS/前台服务/锁屏未实现（对应 T-13/T-14），严禁把模拟闭环当作真机闭环（见 risk-register R-011） |
+
+---
+
+### ✅ 验证结果
+
+| 门禁 | 结果 |
+|---|---|
+| 三方版本一致 | `package.json` = `package-lock.json`（两处）= README 首屏 `v0.3.16` = CHANGELOG 顶部 `v0.3.16` |
+| README 变更记录表覆盖 | 顶部四行连续覆盖 v0.3.13–v0.3.16，无断号 |
+| `npm test` | 68/68 通过 |
+| `npm run test:server` | 6/6 通过 |
+| `npm run build` | 通过（含 `tsc --noEmit`） |
+| `guards.sh` | 通过 |
+
+> 本轮仅改 `README.md`、`CHANGELOG.md`、`package.json`、`package-lock.json`、`docs/项目综合管理文档.md`、`docs/task-backlog.md`、`docs/auto-cycle/risk-register.md`，未触及产品源码、对外接口、DB Schema、核心依赖版本与 CI/CD，判定无需人工审批。
+
+---
+
 ## v0.3.15 - 2026-11-13
 
 自动化循环**运行时 PATH 收口**（周期 7，resume 续跑周期 6 的 rc=127 遗留，对应 risk-register R-012）。

@@ -2,7 +2,9 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.12 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI
+**当前版本：** v0.3.16 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI + 自动化开发循环（`docs/auto-cycle/`）
+
+> 版本号以 `package.json` 为唯一真源，本文件与 `CHANGELOG.md` 保持同步（漂移收口见 `docs/task-backlog.md` B-09）。
 
 ---
 
@@ -220,6 +222,10 @@ flutter build apk    # 构建 APK
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-13 | v0.3.16 | 文档漂移收口（周期 8，B-09）：README 版本号对齐 `package.json` 并补齐 v0.3.13–v0.3.15 变更记录；管理文档 §1.2 Git 状态、§5 里程碑（M1/M2）与 §5.1 T-01/T-04/T-07/T-08 状态按实际更正；T-04 补 android-app（真机）/android-native（模拟）界定 |
+| 2026-11-13 | v0.3.15 | 自动化循环运行时 PATH 收口（周期 7）：两个 systemd unit 显式声明 `Environment=PATH`，`run-cycle.sh` 幂等前置 node/pnpm bin 并新增抢锁前依赖预检；新增 `tests/autocycle/runtime-path-regression.sh` 31/31（R-012 关闭） |
+| 2026-11-13 | v0.3.14 | 自动化循环锁生命周期加固（周期 5）：EXIT trap 条件化释放、陈旧锁自愈、收尾改 jq coalesce 不覆盖 agent 字段、路径改可环境覆盖变量；新增 `run-cycle-lock-regression.sh` 22/22（R-008 关闭 / R-009 缓解） |
+| 2026-11-13 | v0.3.13 | 自动化循环驱动修复（周期 3）：`run-cycle.sh` 改用 stdin 传多行 prompt + 专用 headless profile + 注入 `SENSENOVA_API_KEY`，自动循环首次跑通（R-005 关闭） |
 | 2026-11-02 | v0.3.12 | Android Native 修复 `GpxParser` 子元素高程/时间未读取与升降迟滞缺陷，使解析结果与桌面端口径一致；新增 `GpxParserChildElementTest` 6 个用例；Android JVM 25/25 |
 | 2026-11-02 | v0.3.11 | Android Native 修复 `GpxParser` 跨段距离误计与航点名称读取缺陷；新增 `GpxParserRegressionTest` 7 个用例；Android JVM 19/19 |
 | 2026-11-01 | v0.3.10 | Android Native 修复 `Guidance.localXY` 度/弧度距离低估约 57.3 倍缺陷；新增 `GuidanceTest` 5 个用例；Android JVM 12/12 |
