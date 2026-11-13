@@ -24,9 +24,11 @@
 - **只做一轮**，完成即停，禁止连续多轮。
 - 无可执行 P0/P1/P2 → 本轮 `skipped`，更新状态，**禁止编造需求**。
 - 所有提交**只在 `feat/auto-cycle`** 分支，禁直推 main、禁自动合并 PR。
+- **本地 commit，不要 push**：你的 shell 没有 GitHub 推送凭据（见 risk-register R-010）。改完跑门禁后 `git commit` 到 feat/auto-cycle 即可，推送由每日 00:00 归档轮统一完成。若尝试 push 会因无凭据失败，属预期，不要反复重试。
 - 提交前必跑 `scripts/autocycle/guards.sh`；阻断则不提交。
 - 回滚、高风险变更 → 阻塞等人工，绝不自动闯关。
 - 单轮目标 20min，硬上限 40min。
+- **真机类任务**（T-10~T-15 需 Android 真机）你无法执行真机步骤：这类任务在 backlog 标 `blocked`（缺真机），你只能做其可自动化子项（补单测/文档/CI 校验），**严禁伪造真机测试结果**。优先选取 B-09 / C-01 / T-16 等纯代码/文档任务。
 
 ## 结束必须
 1. 更新 `state/cycle-state.json` 的 `last_run`（status/model/degrade_reason/context_compressed/task/priority）与 `stats`。
