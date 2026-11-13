@@ -12,7 +12,7 @@
 | T-01 | 建立 Git 基线并确认敏感文件排除规则 | P0 | — | Git 仓库、.gitignore 完善 | 仓库可推送/拉取，敏感文件不入库 | 🟢完成 |
 | T-02 | 完成真实高德服务端代理验证 | P0 | 用户配置 .env.server 高德凭据 | 后端代理联调记录 | /api/map-config 返回正确配置，/_AMapService 代理返回真实地图数据 | 🟢完成 |
 | T-03 | 确认 Android 技术方案和目标设备 | P0 | 用户确认最低 Android 版本、目标手机型号 | 技术决策记录 | 决策写入 docs/ 并更新项目规划 | 🟢完成 |
-| T-04 | 建立定位→匹配→锁屏告警最小闭环 | P0 | T-03 完成 | Android 原生定位 + WebView 桥接原型 | 锁屏定位持续工作，偏航声音/振动可触发 | 🟢完成 |
+| T-04 | 建立定位→匹配→锁屏告警最小闭环 | P0 | T-03 完成 | Android 原生定位 + WebView 桥接原型 | 锁屏定位持续工作，偏航声音/振动可触发。**验收口径已按 C-01 重闭合（周期 10）**：① **双线界定** —— `android-app`(Flutter) 定位走真实 GNSS（`RidgelineLocationService.kt` 用 `FusedLocationProviderClient` + `PRIORITY_HIGH_ACCURACY`，前台服务 `START_STICKY`，EventChannel `ridgeline/location`，`AlertPlayer.kt` 声音 `RingtoneManager`+振动 `Vibrator`，Manifest 含 `FOREGROUND_SERVICE_LOCATION`/`VIBRATE`/`WAKE_LOCK`）；`android-native` 定位恒为 `LocationFix.Source.SIMULATION`（`MainActivity.kt:115`），Manifest **无 `<service>`**、无 `Vibrator`/`Ringtone`/`LocationManager`/SQLite。② **真机锁屏端到端复验未取证**（headless 无真机），该子项改判为未完成并入 T-13/T-14。③ 偏航告警「声音/振动可触发」在当前 `android-app` **未成立**（静态可证断裂，见 R-015/B-11） | 🟢完成（**仅原型级**：定位匹配桥接原型成立；真机锁屏复验 + 告警触发链路未闭环，见 C-01 / R-014 / R-015） |
 | T-05 | 定义离线核心验收场景 | P0 | T-03 | 离线验收测试用例 | 验收标准明确，含无网络冷启动、路线读取、定位引导 | 🟢完成 |
 | T-06 | 验证并修复第6章代码检查问题 | P1 | — | Bug 修复 + 回归测试 | B-01~B-08 全部完成 | 🟢完成 |
 | T-07 | 同步 README 与当前实际能力 | P1 | — | README.md 更新 | README 准确反映 v0.2 功能、地图选项、后端能力 | 🟢完成 |
@@ -33,6 +33,7 @@
 | B-06 | /api/usage 跨日统计口径 | P2 | 跨 UTC 日但无新请求时仍显示上一日计数 | 查询时也按当前日更新统计口径 | 🟢完成 |
 | B-07 | 文档落后于实际功能 | P1 | README 等文档未反映 v0.2 新能力 | README 与代码一致（同 T-07） | 🟢完成 |
 | B-08 | 多轨迹删除后重导入回归缺失 | P1 | 修复已有但浏览器端端到端回归未闭环 | 保留已有重命名并恢复缺失路线 | 🟢完成 |
+| B-11 | `android-app` 偏航告警触发链路断裂 | P1 | Dart 侧 `lib/main.dart:179` `_playAlert()` 调 `SystemChannels.platform.invokeMethod('ridgeline/playAlert')` —— 走的是 Flutter 系统 platform channel（`flutter/platform`），不识别自定义方法，抛异常被 `catch (_)` 静默吞掉；原生侧 `MainActivity.kt:40` `locationService` 字段声明后**从未赋值**恒为 null，`"playAlert"` 分支（:110）`locationService?.handleMethodCall(...)` 空安全跳过、`getLocationServiceState`（:114）恒 false。二者叠加 → `AlertPlayer.play()` 永不可达 | ①`lib/main.dart` 改调 `_methodChannel.invokeMethod('playAlert')`；②`MainActivity` 持有真实服务引用（bind 或静态可达）使 `playAlert`/`getLocationServiceState` 生效；③补告警链路断言 + `flutter analyze` 与 Gradle `assembleDebug` 通过 | 🔴阻塞（缺 Flutter/Android SDK 工具链，headless 无法编译验证，禁盲改不可验证代码） |
 
 ---
 
@@ -61,12 +62,13 @@
 | T-15 | android-native 本地轨迹持久化 + 离线冷启动 + 会话恢复 | P1 | Android 首版/离线 | 可与 T-13 并行 | 导入路线写本地库，杀进程重启仍在；飞行模式冷启动≤3s 加载路线库；引导中断重启显示"引导已中断"可从断点恢复；schema 带迁移版本、导入用事务 | 决策-Android §2、§2.2；规划 §2.2、§3.1、§3.2、§7；管理文档 R-006/R-007；实测无 SQLite/Room | ⚪待开始 |
 | T-16 | 后端限流/统计持久化与用量额度告警 | P2 | 后端 | 明确 D-04/D-05 再定存储选型 | 限流计数与 UTC 日累计重启不归零（或明确记录内存+网关兜底）；达 PROXY_DAILY_LIMIT/PER_MINUTE 产生可配置告警非仅 429；/api/usage 口径与持久化一致；保留现有边界（不记录含密钥 URL、错误固定代码），回归 6 项 server 测试不回退 | 后端与部署 §限流（内存、重启清零）及末段"无自动告警"；管理文档 R-110、A-07 | ⚪待开始 |
 | B-09 | 文档漂移收口 | P1 | 文档一致性 | — | README 版本号与 package.json 一致；管理文档 §1.2 Git 相关行按实际更正；§5 里程碑状态与 T-01/T-07/T-08 完成态对齐；T-04 加注 android-app 真机 vs android-native 模拟界定（联动 C-01）；CHANGELOG/README/package.json 三者版本一致 | README L5（写 v0.3.12，实际 0.3.14）；管理文档 §1.2"不是 Git 仓库"与实际矛盾、§5 M1 标未完成但 T-08 已完成 | 🟢完成（周期 8：三方版本统一 0.3.16；README 补 v0.3.13–16 记录；管理文档 §1.2 Git 行、§5 M1/M2、§5.1 T-01/T-04/T-07/T-08 按实际更正；残留漂移转 R-013） |
-| C-01 | 重新闭合 T-04 验收口径 | P1 | 治理 | — | backlog T-04 明确区分 android-app（Flutter 真实定位，EventChannel ridgeline/location）与 android-native（仅 SIMULATION）两条线，附实测证据；给真机锁屏闭环复验结论或改判进行中；风险台账补登"模拟闭环被误认真机闭环"（对应 K-01） | backlog T-04 标🟢完成 + 变更记录 2026-10-09 仅提 android-app；实测 android-native 无定位/声音/持久化；管理文档 K-01 | ⚪待开始 |
+| C-01 | 重新闭合 T-04 验收口径 | P1 | 治理 | — | backlog T-04 明确区分 android-app（Flutter 真实定位，EventChannel ridgeline/location）与 android-native（仅 SIMULATION）两条线，附实测证据；给真机锁屏闭环复验结论或改判进行中；风险台账补登"模拟闭环被误认真机闭环"（对应 K-01） | backlog T-04 标🟢完成 + 变更记录 2026-10-09 仅提 android-app；实测 android-native 无定位/声音/持久化；管理文档 K-01 | 🟢完成（周期 10：backlog T-04 双线界定 + 附代码级实测证据（android-app FusedLocationProviderClient/START_STICKY/EventChannel ridgeline/location/AlertPlayer vs android-native SIMULATION、Manifest 无 `<service>`）；真机锁屏复验**未取证** → 改判未完成并入 T-13/T-14（不伪造真机结果）；风险台账新增 R-014（模拟闭环被误认真机闭环，K-01）与 R-015（android-app 偏航告警链路断裂）→ 转 B-11；管理文档 K-01 同步加注） |
 | B-10 | 管理文档残留漂移收口 | P1 | 文档一致性 | — | 管理文档 §1.2 工作目录按实际更正；§1.3 移动端目标按 android-app/android-native 双线实际补全；§6.1 测试证据按实跑更正（前端/后端/Android JVM）；§8 K-06 更正「不是 Git 仓库」；项目版本真源对齐 package.json | risk-register R-013（周期 8 有意遗留，建议独立小粒度轮收口） | 🟢完成（周期 9：§1.2 工作目录 `/home/ubuntu/gpx-3d-viewer` + HEAD 提交数改真源引用；项目版本 0.3.12→0.3.16 对齐 package.json；§1.3 移动端双线补全；§6.1 前端 68/68、后端 6/6、新增 Android JVM 25/25；§8 K-06 改「已缓解+残留无 tag」；R-013 关闭） |
 
 **选取约束（对自动循环）**：
 - T-13/T-14/T-15/T-10/T-11 需 Android 真机，headless agent 无法自动执行真机步骤 → 这些在自动循环里标 `blocked`（缺真机），**不得**由 agent 凭空伪造真机结果；仅可做其可自动化的子项（如补单测、补文档、补 CI 校验）。
-- ~~B-09~~（周期 8 已完成）、~~B-10~~（周期 9 已完成）、C-01、T-16（代码/文档侧）为 headless agent 可自动执行的候选。
+- ~~B-09~~（周期 8 已完成）、~~B-10~~（周期 9 已完成）、~~C-01~~（周期 10 已完成）为已收口的文档/治理项；**剩余可自动执行候选仅 T-16**（代码/文档侧，前置 D-04/D-05 存储选型待明确）。
+- **B-11**（周期 10 新登记，`android-app` 偏航告警链路断裂）为静态可定位的 P1 缺陷，但修复需 Flutter/Android SDK 工具链做编译/构建验证，headless 缺工具链 → 标 `blocked`，禁盲改不可验证代码（R-015）。
 - 详见 `docs/auto-cycle/CHARTER.md` §4.2（无可验证验收项不得启动）与 §3.5（无任务标 skipped）。
 
 ---
@@ -113,3 +115,4 @@
 | 2026-11-13 | 自动化循环运行时 PATH 收口（周期 7 resume 续跑周期 6 rc=127 遗留，对应 risk-register R-012 已关闭）：`gpx-autocycle.service`/`gpx-autocycle-archive.service` 显式声明补齐 node+dsh 的 `Environment=PATH`；`run-cycle.sh` 改幂等循环同时前置 `~/.local/node/bin` 与 `~/.local/share/pnpm`；抢锁前新增依赖预检（`AUTOCYCLE_REQUIRE_BINS` 可覆盖）缺失即快速失败且不抢锁/不写状态机；新增回归 `tests/autocycle/runtime-path-regression.sh` 31/31 通过。门禁：bash -n 全通过、锁回归 22/22、前端 68/68、服务端 6/6、build、guards.sh 通过。B-09（README 版本漂移）仍未收口 |
 | 2026-11-13 | B-09 文档漂移收口完成（周期 8 new 轮）：`package.json`/`README.md`/`CHANGELOG.md` 三方版本统一 `0.3.16`；README 首屏注明版本真源为 `package.json` 并补齐 v0.3.13–v0.3.15 变更记录；管理文档 §1.2 Git 三行按实际更正（仓库/origin/分支/35 提交/无 tag）、§5 M1「未完成→基本达成」与 M2「未启动→部分完成」对齐 backlog 完成态、§5.1 T-01/T-07/T-08 标完成且 T-04 补 android-app（真机）/android-native（SIMULATION）界定。门禁：三方版本一致、README 版本表无断号、前端 68/68、服务端 6/6、build、guards.sh 通过。残留基线文档漂移转登记 R-013，C-01 仍开放 |
 | 2026-11-13 | B-10 管理文档残留漂移收口完成（周期 9 new 轮，关闭 R-013）：管理文档 §1.2 工作目录 `E:\project\gpx-3d-viewer`→`/home/ubuntu/gpx-3d-viewer`、HEAD 提交数 35 改为真源引用（`git rev-list --count HEAD`，当时 36）防固化漂移；项目版本真源 0.3.12→0.3.16 对齐 `package.json`；§1.3 移动端目标「尚未落地」→android-app/android-native 双线实际补全（锁屏真实 GNSS/声音振动/持久化仍标未实现，指向 T-13/14/15）；§6.1 测试证据按周期 9 实跑更正（前端 30→68/68、后端补 6/6、新增 Android JVM 25/25 行、26/30 历史快照不可与当前混同）；§8 K-06「当前不是 Git 仓库」→「已缓解（仓库存在）+ 残留无 tag」。门禁：前端 68/68、服务端 6/6、guards.sh 通过。C-01 仍开放，为下一文档治理候选 |
+| 2026-11-13 | C-01 重闭合 T-04 验收口径完成（周期 10 new 轮）：**T-04 由单一「🟢完成」改为「仅原型级」双线界定** —— `android-app`(Flutter) 定位走真实 GNSS（`FusedLocationProviderClient`+`PRIORITY_HIGH_ACCURACY`、前台 `START_STICKY`、EventChannel `ridgeline/location`、`AlertPlayer` 声音+振动、Manifest `FOREGROUND_SERVICE_LOCATION`/`VIBRATE`/`WAKE_LOCK`）；`android-native` 定位恒为 `LocationFix.Source.SIMULATION`、Manifest 无 `<service>`、无 `Vibrator`/`Ringtone`/SQLite。**真机锁屏端到端复验未取证 → 改判未完成并入 T-13/T-14**（headless 无真机，严禁伪造）。代码只读核查另发现 `android-app` 偏航告警触发链路静态可证断裂（Dart 走错 channel + `MainActivity.locationService` 永不赋值）→ 新增 **B-11**(P1，标 blocked 缺 Flutter/Android SDK) 与 **R-015**；「模拟闭环被误认真机闭环」正式登记为 **R-014**（对应管理文档 K-01，K-01 行同步加注）。剩余可自动执行候选仅 T-16 |
