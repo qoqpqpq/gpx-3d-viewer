@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from './app.mjs';
 async function fixture(t,options={}){
- const calls=[];const app=createApp({key:'public-key',secret:'server-secret',adminToken:'admin-test',origins:['https://app.example'],fetchImpl:async(url,opts)=>{calls.push({url:new URL(url),opts});return new Response('tile',{headers:{'content-type':'application/octet-stream'}});},...options});
+ const calls=[];const app=createApp({key:'public-key',secret:'server-secret',adminToken:'admin-test',origins:['https://app.example'],fetchImpl:async(url,opts)=>{calls.push({url:new URL(url),opts});return new Response('tile',{headers:{'content-type':'application/octet-stream'}});},onAlert:null,...options});
  await new Promise(resolve=>app.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>{app.closeAllConnections();app.close(resolve);}));
  const base=`http://127.0.0.1:${app.address().port}`;
  return {calls,get:(path,init={})=>fetch(base+path,init),proxy:(path='v3/vectormap',query='')=>fetch(`${base}/_AMapService/${path}${query}`,{headers:{referer:'https://app.example/map'}})};
@@ -34,4 +34,26 @@ test('unconfigured proxy is explicit; mutations and source files cannot be serve
  assert.equal((await f.get('/api/health',{method:'POST'})).status,405);
  for(const path of ['/.env.server','/src/main.ts','/api/missing','/%2eenv.server'])assert.equal((await f.get(path)).status,404);
  assert.equal((await f.get('/')).status,200);
+});
+test('quota alerts fire once per level and are exposed through /api/usage',async t=>{
+ const alerts=[];
+ const f=await fixture(t,{dailyLimit:4,dailyWarning:0.5,dailyCritical:1,perMinuteWarning:0.8,perMinuteCritical:1,onAlert:a=>alerts.push(a)});
+ await f.proxy();assert.equal(alerts.length,0);
+ await f.proxy();assert.equal(alerts.length,1);assert.equal(alerts[0].scope,'day');assert.equal(alerts[0].level,'warning');assert.equal(alerts[0].threshold,2);assert.equal(alerts[0].ratio,0.5);assert.equal(alerts[0].used,2);assert.equal(alerts[0].limit,4);
+ await f.proxy();assert.equal(alerts.length,1);
+ const usage=await (await f.get('/api/usage',{headers:{authorization:'Bearer admin-test'}})).json();
+ assert.equal(usage.dayRequests,3);assert.equal(usage.alerts.length,1);assert.equal(usage.thresholds.day.warning,2);assert.equal(usage.thresholds.day.critical,4);assert.equal(usage.thresholds.perMinute.warning,144);
+ await f.proxy();assert.equal(alerts.length,2);assert.equal(alerts[1].level,'critical');assert.equal((await f.proxy()).status,429);
+});
+test('quota alert state recovers after the UTC day rolls over',async t=>{
+ let time=Date.UTC(2026,8,28,23,59,50);const alerts=[];
+ const f=await fixture(t,{now:()=>time,dailyLimit:1,dailyWarning:1,dailyCritical:1,onAlert:a=>alerts.push(a)});
+ await f.proxy();assert.equal(alerts.length,1);assert.equal(alerts[0].level,'critical');assert.equal(alerts[0].day,'2026-09-28');
+ time+=70000;assert.equal((await f.proxy()).status,200);
+ // Day-scope alerts re-arm on UTC rollover; stale minute-scope entries are unrelated to the day window.
+ const days=()=>alerts.filter(a=>a.scope==='day');
+ assert.equal(days().length,2);assert.equal(days()[1].day,'2026-09-29');
+ const usage=await (await f.get('/api/usage',{headers:{authorization:'Bearer admin-test'}})).json();
+ assert.equal(usage.day,'2026-09-29');assert.ok(usage.dayRequests>=1);
+ const dayAlerts=usage.alerts.filter(a=>a.scope==='day');assert.ok(dayAlerts.length>=1);assert.equal(dayAlerts[dayAlerts.length-1].day,'2026-09-29');
 });

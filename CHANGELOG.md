@@ -1,5 +1,37 @@
 # 更新日志
 
+## v0.3.17 - 2026-11-13
+
+**后端用量额度告警**（周期 11，new 轮，`docs/task-backlog.md` T-16 第一增量）。改产品代码但不改对外接口的请求/响应契约：`/_AMapService` 行为不变，`GET /api/usage` 仅新增字段。
+
+---
+
+### ✨ 新增
+
+| 项 | 说明 |
+|---|---|
+| **限流越阈告警** | 代理预算判定（`server/app.mjs` `budget()`）每请求评估 per-IP 分钟与 UTC 日两条线的 warning/critical 双阈值；越阈按 `(scope,level)` 每窗口只发一次，写入进程内环形缓冲（20 条）并转发 `onAlert` |
+| **默认阈值 80% / 100%** | per-IP 分钟与 UTC 日累计默认 warning=80%、critical=100%；critical 与既有 429 拒绝点对齐，即「开始拒绝」必然同时告警 |
+| **可配置阈值** | `server/index.mjs` 新增 `PROXY_PER_MINUTE_WARN` / `PROXY_PER_MINUTE_CRITICAL` / `PROXY_DAILY_WARN` / `PROXY_DAILY_CRITICAL`，取对应 limit 的百分比（`50` = 50%）；缺省回落应用默认，非法值（≤0 / >100 / 非数字）启动即抛错快速失败 |
+| **`/api/usage` 暴露阈值与告警** | 响应新增 `thresholds`（`day` / `perMinute` 各含 warning/critical，**绝对次数**口径）与 `alerts`（最近告警，含 `ts`/`scope`/`level`/`threshold`/`ratio`/`used`/`limit`/`day`）；鉴权与既有字段不变 |
+| **UTC 日翻转重新武装** | 日累计清零时只复位 `(scope,level)` 已发标记，`alerts` 保留跨日历史（环形缓冲），便于运维回看前一天触阈时间点 |
+
+### 🧪 测试
+
+| 项 | 说明 |
+|---|---|
+| **server 测试 6 → 8** | 新增「告警按 level 只发一次并经 `/api/usage` 暴露」（`dailyLimit:4` + warning 50%：第 2 次请求告 warning、第 4 次告 critical、之后 429；断言阈值/占比/用量与 `thresholds` 绝对次数）与「UTC 日翻转后告警重新武装」（日界后已发标记复位、新一天重新告警且 `alerts` 保留历史）两项；复跑 5 次 8/8 稳定 |
+| **门禁** | `npm test` 前端 68/68、`npm run build`（`tsc --noEmit` + vite）通过、`guards.sh` 调试命中 0 |
+
+### 📝 说明
+
+| 项 | 说明 |
+|---|---|
+| **持久化仍未做（T-16 余量）** | 限流计数与 UTC 日累计仍是**进程内存、重启清零、多实例不共享**（见 `docs/后端与部署.md`）。本轮只补「额度告警」这一可自动验证的增量；持久化需 D-04/D-05 存储选型拍板，且落 SQLite/文件会触碰 CHARTER §4.3 高风险变更（数据存储）门槛，登记为 R-016 待人工决策 |
+| **阈值口径的坑（本轮实测踩到）** | 阈值同时接受「占比（≤1）」与「绝对次数（>1）」两种写法；首次实现把占比阈值与绝对用量直接比较，导致 `perMinuteCritical=1` 在首个请求即误报 critical。已改 `countOf()` 归一化（≤1 按 `ceil(limit×t)`，>1 按绝对值）并用测试固定该行为 |
+
+---
+
 ## v0.3.16 - 2026-11-13
 
 **文档漂移收口**（周期 8，new 轮，对应 `docs/task-backlog.md` B-09）。纯文档/版本一致性轮，不改产品代码与对外接口。

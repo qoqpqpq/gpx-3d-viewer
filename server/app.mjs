@@ -3,10 +3,29 @@ import { readFile, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 
+ // Quota alerts: warning/critical thresholds per limit, emitted once per (scope,level) per window,
+ // surfaced through /api/usage and forwarded to `onAlert` (default: structured stderr log).
+ const ALERT_RING=20;
+ // Thresholds are fractions of the matching limit when <=1 (0.8 = 80%), absolute counts when >1.
+ const threshold=(v,fallback)=>{const n=Number(v);return Number.isFinite(n)&&n>0?n:fallback;};
 export function createApp(options={}) {
- const {key='',secret='',adminToken='',origins=[],perMinute=180,dailyLimit=20000,fetchImpl=fetch,now=Date.now,dist=resolve('dist')}=options;
+ const {key='',secret='',adminToken='',origins=[],perMinute=180,dailyLimit=20000,fetchImpl=fetch,now=Date.now,dist=resolve('dist'),
+  perMinuteWarning=threshold(options.perMinuteWarning,0.8),perMinuteCritical=threshold(options.perMinuteCritical,1),
+  dailyWarning=threshold(options.dailyWarning,0.8),dailyCritical=threshold(options.dailyCritical,1),
+  onAlert=options.onAlert===undefined?(alert=>console.error('[quota-alert]',JSON.stringify(alert))):options.onAlert}=options;
  const targets=new Map([['/v4/map/styles','https://webapi.amap.com/v4/map/styles'],['/v3/vectormap','https://fmap01.amap.com/v3/vectormap']]);
  let day='',used=0;const clients=new Map();
+ const countOf=(t,limit)=>t<=1?Math.ceil(limit*t):Math.floor(t);
+ const limits={
+  minute:{warning:perMinuteWarning,critical:perMinuteCritical,warningCount:countOf(perMinuteWarning,perMinute),criticalCount:countOf(perMinuteCritical,perMinute)},
+  day:{warning:dailyWarning,critical:dailyCritical,warningCount:countOf(dailyWarning,dailyLimit),criticalCount:countOf(dailyCritical,dailyLimit)}};
+ const fired=new Set();const alertLog=[];
+ const levelFor=(usage,limit)=>usage>=limit.criticalCount?'critical':usage>=limit.warningCount?'warning':null;
+ const emitAlert=(scope,level,usage,limit)=>{
+  const at=level==='critical'?limit.criticalCount:limit.warningCount;
+  const alert={ts:new Date(now()).toISOString(),scope,level,threshold:at,ratio:at/(scope==='day'?dailyLimit:perMinute),used:usage,limit:scope==='day'?dailyLimit:perMinute,day};
+  if(!fired.has(scope+':'+level)){fired.add(scope+':'+level);alertLog.push(alert);if(alertLog.length>ALERT_RING)alertLog.shift();if(onAlert)onAlert(alert);}
+ };
  const stats={startedAt:new Date(now()).toISOString(),proxyRequests:0,upstreamRequests:0,upstreamBytes:0,rejected:0,upstreamErrors:0};
  const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
  const authorized=req=>{const actual=Buffer.from(req.headers.authorization??''),expected=Buffer.from(`Bearer ${adminToken}`);return !!adminToken&&actual.length===expected.length&&timingSafeEqual(actual,expected);};
@@ -17,10 +36,15 @@ export function createApp(options={}) {
   try{return origins.includes(new URL(source).origin);}catch{return false;}
  };
  const budget=(req,res)=>{
-  const today=new Date(now()).toISOString().slice(0,10);if(day!==today){day=today;used=0;}
+  const today=new Date(now()).toISOString().slice(0,10);if(day!==today){day=today;used=0;fired.clear();}
   const time=now(),ip=req.socket.remoteAddress??'unknown';
   for(const [id,b] of clients)if(time-b.at>=60000)clients.delete(id);
-  let bucket=clients.get(ip);if(!bucket){if(clients.size>=10000)return false;bucket={at:time,count:0};clients.set(ip,bucket);}
+  let bucket=clients.get(ip);
+  if(!bucket){if(clients.size>=10000)return false;bucket={at:time,count:0};clients.set(ip,bucket);}
+  const level=levelFor(bucket.count+1,limits.minute);
+  if(level)emitAlert('minute',level,bucket.count+1,limits.minute);
+  const dayLevel=levelFor(used+1,limits.day);
+  if(dayLevel)emitAlert('day',dayLevel,used+1,limits.day);
   if(bucket.count>=perMinute||used>=dailyLimit){res.setHeader('Retry-After',used>=dailyLimit?'3600':'60');return false;}
   bucket.count++;used++;return true;
  };
@@ -31,8 +55,8 @@ export function createApp(options={}) {
   if(url.pathname==='/api/map-config'){json(res,200,{amap:{enabled:!!key&&!!secret,key:key&&secret?key:undefined,serviceHost:'/_AMapService'}});return;}
   if(url.pathname==='/api/usage'){
    if(!authorized(req)){json(res,401,{error:'unauthorized'});return;}
-   const today=new Date(now()).toISOString().slice(0,10);if(day!==today){day=today;used=0;}
-   json(res,200,{...stats,day,dayRequests:used,dailyLimit,perMinute,scope:'This process only; AMap proxy requests, not provider billing totals.'});return;
+   const today=new Date(now()).toISOString().slice(0,10);if(day!==today){day=today;used=0;fired.clear();}
+   json(res,200,{...stats,day,dayRequests:used,dailyLimit,perMinute,thresholds:{day:{warning:limits.day.warningCount,critical:limits.day.criticalCount},perMinute:{warning:limits.minute.warningCount,critical:limits.minute.criticalCount}},alerts:alertLog.slice(),scope:'This process only; AMap proxy requests, not provider billing totals.'});return;
   }
   if(url.pathname.startsWith('/_AMapService/')){
    stats.proxyRequests++;

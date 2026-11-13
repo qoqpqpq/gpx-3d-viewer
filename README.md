@@ -2,7 +2,7 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.16 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI + 自动化开发循环（`docs/auto-cycle/`）
+**当前版本：** v0.3.17 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI + 自动化开发循环（`docs/auto-cycle/`）
 
 > 版本号以 `package.json` 为唯一真源，本文件与 `CHANGELOG.md` 保持同步（漂移收口见 `docs/task-backlog.md` B-09）。
 
@@ -222,6 +222,7 @@ flutter build apk    # 构建 APK
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-13 | v0.3.17 | 后端用量额度告警（周期 11，T-16 第一增量）：代理限流新增 warning/critical 双阈值（默认 80%/100%，`PROXY_PER_MINUTE_WARN/CRITICAL`、`PROXY_DAILY_WARN/CRITICAL` 可配），越阈通过结构化 stderr 日志输出一次并随 `GET /api/usage` 暴露 `thresholds`+`alerts`；新增 2 项 server 测试（8/8）。持久化仍未做，见 `docs/auto-cycle/risk-register.md` R-016 |
 | 2026-11-13 | v0.3.16 | 文档漂移收口（周期 8，B-09）：README 版本号对齐 `package.json` 并补齐 v0.3.13–v0.3.15 变更记录；管理文档 §1.2 Git 状态、§5 里程碑（M1/M2）与 §5.1 T-01/T-04/T-07/T-08 状态按实际更正；T-04 补 android-app（真机）/android-native（模拟）界定 |
 | 2026-11-13 | v0.3.15 | 自动化循环运行时 PATH 收口（周期 7）：两个 systemd unit 显式声明 `Environment=PATH`，`run-cycle.sh` 幂等前置 node/pnpm bin 并新增抢锁前依赖预检；新增 `tests/autocycle/runtime-path-regression.sh` 31/31（R-012 关闭） |
 | 2026-11-13 | v0.3.14 | 自动化循环锁生命周期加固（周期 5）：EXIT trap 条件化释放、陈旧锁自愈、收尾改 jq coalesce 不覆盖 agent 字段、路径改可环境覆盖变量；新增 `run-cycle-lock-regression.sh` 22/22（R-008 关闭 / R-009 缓解） |
