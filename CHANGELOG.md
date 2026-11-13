@@ -1,5 +1,42 @@
 # 更新日志
 
+## v0.3.15 - 2026-11-13
+
+自动化循环**运行时 PATH 收口**（周期 7，resume 续跑周期 6 的 rc=127 遗留，对应 risk-register R-012）。
+
+---
+
+### 🐛 修复
+
+| 项 | 说明 |
+|---|---|
+| **systemd 下 agent 0s 即 rc=127**（R-012） | 根因：systemd 默认 `PATH` 既不含 `~/.local/node/bin`（node/npm）也不含 `~/.local/share/pnpm`（dsh），而 `dsh` 是 `#!/usr/bin/env node` 脚本，缺 node 直接 `node: No such file or directory`（周期 6 驱动轮实锤）。修复：`gpx-autocycle.service` 与 `gpx-autocycle-archive.service` 均显式声明 `Environment=PATH=`（node bin + pnpm bin + 系统目录） |
+| **驱动侧 PATH 只补 dsh 不补 node**（R-012） | `run-cycle.sh` 原仅把 pnpm 全局 bin 前置到 PATH，node 仍可能缺失；改为幂等循环同时前置 `~/.local/node/bin` 与 `~/.local/share/pnpm`（去重、目录存在才加），与 unit 双保险 |
+| **环境缺失只能靠 rc=127 事后判读**（R-012） | 新增**依赖预检**：抢锁前校验 `node/jq/flock/git`（可用 `AUTOCYCLE_REQUIRE_BINS` 覆盖），缺失即写 ERROR 审计并快速失败，**不抢锁、不写状态机**，避免污染 `stats.failed` 语义与误导下一轮续跑判读 |
+
+---
+
+### ✅ 验证结果
+
+| 门禁 | 结果 |
+|---|---|
+| `bash -n scripts/autocycle/*.sh tests/autocycle/*.sh` | 全部通过 |
+| 运行时 PATH / 依赖预检回归 `tests/autocycle/runtime-path-regression.sh`（新增） | 31/31 通过（unit PATH 静态断言、`systemd-analyze verify`、bin 可解析性、预检快速失败不抢锁、运行时齐全时放行） |
+| 锁生命周期回归 `tests/autocycle/run-cycle-lock-regression.sh` | 22/22 通过（未回退） |
+| `npm test` | 68/68 通过 |
+| `npm run test:server` | 6/6 通过 |
+| `npm run build` | 通过（含 `tsc --noEmit`） |
+| `guards.sh` | 通过（4 文件，调试代码命中 0） |
+
+---
+
+### 📌 遗留
+
+- B-09（文档漂移）未在本轮收口：README 仍写 v0.3.12，与 `package.json` 0.3.15 不一致，留待独立轮处理。
+- 按 R-010 设计，本轮**仅本地 commit**，不 push；推送由每日 00:00 归档轮注入 token 完成。
+
+---
+
 ## v0.3.14 - 2026-11-13
 
 自动化循环**锁生命周期加固**（周期 5）：收口周期 4 发现的陈旧锁问题（R-008），并修复驱动收尾覆盖 PM agent 状态字段与硬编码相对路径缺陷（R-009）。

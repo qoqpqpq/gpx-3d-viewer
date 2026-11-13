@@ -12,6 +12,9 @@ WorkingDirectory=/home/ubuntu/gpx-3d-viewer
 Environment=HOME=/home/ubuntu
 Environment=DSH_HOME=/home/ubuntu/.dsh
 Environment=GIT_TERMINAL_PROMPT=0
+# systemd 默认 PATH 不含 node/npm(/.local/node/bin) 与 dsh(/.local/share/pnpm)，必须补齐
+# 否则 dsh 的 `#!/usr/bin/env node` 报 "node: No such file or directory"（周期 6 rc=127 实锤）
+Environment=PATH=/home/ubuntu/.local/node/bin:/home/ubuntu/.local/share/pnpm:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # 单轮硬超时 40min（脚本内 SOFT 20min / HARD 40min）
 Environment=SOFT_TIMEOUT=1200
 Environment=HARD_TIMEOUT=2400

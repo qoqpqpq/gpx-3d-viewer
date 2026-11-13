@@ -37,8 +37,28 @@ if [ -z "${SENSENOVA_API_KEY:-}" ] && [ -r "$CRED_FILE" ]; then
   SENSENOVA_API_KEY="$(python3 -c "import yaml;print(yaml.safe_load(open('$CRED_FILE'))['refs'].get('SENSENOVA_API_KEY',''))" 2>/dev/null)"
   export SENSENOVA_API_KEY
 fi
-# 确保 dsh 在 PATH（systemd 环境默认不含 pnpm 全局 bin）
-case ":$PATH:" in *":$HOME/.local/share/pnpm:"*) ;; *) export PATH="$HOME/.local/share/pnpm:$PATH";; esac
+# 确保 node/npm 与 dsh 在 PATH。
+# 周期 6 rc=127 实锤（见 R-012）：systemd 默认 PATH 既不含 $HOME/.local/node/bin（node/npm）
+# 也不含 pnpm 全局 bin（dsh），而 dsh 是 `#!/usr/bin/env node` 脚本，缺 node 时 0s 即失败。
+# 这里做幂等前置（去重、目录存在才加），与 systemd unit 的 Environment=PATH 双保险。
+for _d in "$HOME/.local/node/bin" "$HOME/.local/share/pnpm"; do
+  case ":$PATH:" in *":$_d:"*) ;; *) [ -d "$_d" ] && export PATH="$_d:$PATH";; esac
+done
+unset _d
+
+# ---------- 依赖预检 (CHARTER §4.5 门禁前置) ----------
+# 环境缺运行时（node/jq/flock/git）时 agent 必然 rc=127，与其让驱动记 failed，不如启动前快速失败并写清审计。
+REQUIRED_BINS="${AUTOCYCLE_REQUIRE_BINS:-node jq flock git}"
+MISSING_BINS=""
+for _b in $REQUIRED_BINS; do
+  command -v "$_b" >/dev/null 2>&1 || MISSING_BINS="$MISSING_BINS $_b"
+done
+unset _b
+if [ -n "$MISSING_BINS" ]; then
+  audit ERROR "依赖预检失败：PATH 缺少运行时:${MISSING_BINS}，agent 必然 rc=127，本轮中止（未抢锁、未改状态机）。修 systemd unit 的 Environment=PATH 或补装依赖，见 R-012。"
+  echo "[run-cycle] 依赖预检失败：缺少${MISSING_BINS}，中止。"
+  exit 1
+fi
 
 # ---------- 兜底模式检查 ----------
 if [ -f "$FROZEN_FLAG" ]; then
@@ -81,7 +101,7 @@ fi
 #   3) 收尾兜底用 jq coalesce，不覆盖 PM agent 已写入的 task/priority/result/gates。
 LOCK_HELD_BY_ME=0
 release_lock() {
-  if [ "$LOCK_HELD_BY_ME" -eq 1 ]; then
+  if [ "${LOCK_HELD_BY_ME:-0}" -eq 1 ]; then
     printf '%s | %-8s | %s\n' "$(date '+%F %T')" "INFO" "释放锁（EXIT trap）" >> "$AUDIT"
     LOCK_HELD_BY_ME=0
     jq --arg h "$HOLDER_AT_ACQUIRE" --arg t "$ACQUIRED_AT" \

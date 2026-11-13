@@ -11,6 +11,8 @@ WorkingDirectory=/home/ubuntu/gpx-3d-viewer
 Environment=HOME=/home/ubuntu
 Environment=DSH_HOME=/home/ubuntu/.dsh
 Environment=GIT_TERMINAL_PROMPT=0
+# 补齐 node/npm 与 dsh 路径（systemd 默认 PATH 不含，见 gpx-autocycle.service 注释）
+Environment=PATH=/home/ubuntu/.local/node/bin:/home/ubuntu/.local/share/pnpm:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/home/ubuntu/gpx-3d-viewer/scripts/autocycle/archive-daily.sh
 TimeoutStartSec=1800
 StandardOutput=journal
