@@ -25,6 +25,16 @@ audit_json() { # 追加结构化审计（一行 JSON）
   printf '%s\n' "$1" >> "$AUDIT"
 }
 
+# ---------- 注入模型凭据（headless 需要环境变量形式的 API key） ----------
+# 从 DSH 凭证服务读取，仅注入本次进程环境，不落盘、不写日志
+CRED_FILE="${DSH_CREDENTIALS:-$HOME/.dsh/.credentials.yaml}"
+if [ -z "${SENSENOVA_API_KEY:-}" ] && [ -r "$CRED_FILE" ]; then
+  SENSENOVA_API_KEY="$(python3 -c "import yaml;print(yaml.safe_load(open('$CRED_FILE'))['refs'].get('SENSENOVA_API_KEY',''))" 2>/dev/null)"
+  export SENSENOVA_API_KEY
+fi
+# 确保 dsh 在 PATH（systemd 环境默认不含 pnpm 全局 bin）
+case ":$PATH:" in *":$HOME/.local/share/pnpm:"*) ;; *) export PATH="$HOME/.local/share/pnpm:$PATH";; esac
+
 # ---------- 兜底模式检查 ----------
 if [ -f state/FROZEN ]; then
   audit WARN "FROZEN 模式：自动周期已冻结，本轮 skip。"
@@ -113,8 +123,9 @@ PROMPT="你是 gpx-3d-viewer 自动化开发 PM。严格遵循 docs/auto-cycle/C
 audit INFO "触发 PM agent (headless)，mode=$MODE_LABEL readonly=$READONLY"
 START=$(date +%s)
 set +e
-timeout --signal=TERM --kill-after=30s "$HARD_TIMEOUT" \
-  dsh headless --profile web "$PROMPT" > "state/.cycle-${NEXT}.out" 2>&1
+# 用 headless profile（已接入 sensenova）；多行 prompt 走 stdin（"-"），避免参数切分
+printf '%s' "$PROMPT" | timeout --signal=TERM --kill-after=30s "$HARD_TIMEOUT" \
+  dsh --profile headless - > "state/.cycle-${NEXT}.out" 2>&1
 RC=$?
 set -e
 END=$(date +%s)

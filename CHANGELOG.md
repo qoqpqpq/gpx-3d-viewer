@@ -1,5 +1,35 @@
 # 更新日志
 
+## v0.3.13 - 2026-11-13
+
+自动化开发循环驱动修复：PM agent 触发调用方式错误导致周期 1/2 全部失败，本轮定位并修复，自动循环首次跑通。
+
+---
+
+### 🐛 修复
+
+| 项 | 说明 |
+|---|---|
+| **PM agent 触发参数切分** | `run-cycle.sh` 原用 `dsh headless --profile web "$PROMPT"`，多行 prompt 被当作 web profile 的应用参数，报 `too many arguments. Expected 0 arguments but got 2`，周期 1/2 均在 2s 内 rc=1 失败；改为 `printf '%s' "$PROMPT" \| dsh --profile headless -`，prompt 经 stdin 传入，规避参数切分 |
+| **profile 上下文不兼容** | web profile 的 lighthouse-expert 插件在 headless 上下文报 `cannot get required service "tools" in inactive context`；改用专用 `headless` profile（`dsh-base` + `dsh-headless` + sensenova LLM 插件） |
+| **凭据与环境注入** | 新增从 DSH 凭证服务读取 `SENSENOVA_API_KEY` 并仅注入本次进程环境（不落盘、不写日志）；补齐 pnpm 全局 bin 到 PATH，避免 systemd 环境找不到 `dsh` |
+
+---
+
+### ✅ 验证结果
+
+| 门禁 | 结果 |
+|---|---|
+| `bash -n scripts/autocycle/run-cycle.sh` | 通过 |
+| 周期 3 实跑 | PM agent 正常推理并完成单轮流程（周期 1/2 为 2s 内异常退出） |
+| `npm test` | 68/68 通过 |
+| `npm run test:server` | 6/6 通过 |
+| `npm run build` | 通过 |
+
+> 遗留：headless profile 未挂载文件/命令工具插件，agent 暂只能在轮内推理，台账与审计落盘依赖驱动/人工兜底（见 `docs/auto-cycle/risk-register.md` R-005/R-006）。
+
+---
+
 ## v0.3.12 - 2026-11-02
 
 Android Native 修复 GPX 解析器子元素高程/时间读取与升降迟滞缺陷，使解析结果与桌面端口径一致。
