@@ -62,10 +62,11 @@
 | T-16 | 后端限流/统计持久化与用量额度告警 | P2 | 后端 | 明确 D-04/D-05 再定存储选型 | 限流计数与 UTC 日累计重启不归零（或明确记录内存+网关兜底）；达 PROXY_DAILY_LIMIT/PER_MINUTE 产生可配置告警非仅 429；/api/usage 口径与持久化一致；保留现有边界（不记录含密钥 URL、错误固定代码），回归 6 项 server 测试不回退 | 后端与部署 §限流（内存、重启清零）及末段"无自动告警"；管理文档 R-110、A-07 | ⚪待开始 |
 | B-09 | 文档漂移收口 | P1 | 文档一致性 | — | README 版本号与 package.json 一致；管理文档 §1.2 Git 相关行按实际更正；§5 里程碑状态与 T-01/T-07/T-08 完成态对齐；T-04 加注 android-app 真机 vs android-native 模拟界定（联动 C-01）；CHANGELOG/README/package.json 三者版本一致 | README L5（写 v0.3.12，实际 0.3.14）；管理文档 §1.2"不是 Git 仓库"与实际矛盾、§5 M1 标未完成但 T-08 已完成 | 🟢完成（周期 8：三方版本统一 0.3.16；README 补 v0.3.13–16 记录；管理文档 §1.2 Git 行、§5 M1/M2、§5.1 T-01/T-04/T-07/T-08 按实际更正；残留漂移转 R-013） |
 | C-01 | 重新闭合 T-04 验收口径 | P1 | 治理 | — | backlog T-04 明确区分 android-app（Flutter 真实定位，EventChannel ridgeline/location）与 android-native（仅 SIMULATION）两条线，附实测证据；给真机锁屏闭环复验结论或改判进行中；风险台账补登"模拟闭环被误认真机闭环"（对应 K-01） | backlog T-04 标🟢完成 + 变更记录 2026-10-09 仅提 android-app；实测 android-native 无定位/声音/持久化；管理文档 K-01 | ⚪待开始 |
+| B-10 | 管理文档残留漂移收口 | P1 | 文档一致性 | — | 管理文档 §1.2 工作目录按实际更正；§1.3 移动端目标按 android-app/android-native 双线实际补全；§6.1 测试证据按实跑更正（前端/后端/Android JVM）；§8 K-06 更正「不是 Git 仓库」；项目版本真源对齐 package.json | risk-register R-013（周期 8 有意遗留，建议独立小粒度轮收口） | 🟢完成（周期 9：§1.2 工作目录 `/home/ubuntu/gpx-3d-viewer` + HEAD 提交数改真源引用；项目版本 0.3.12→0.3.16 对齐 package.json；§1.3 移动端双线补全；§6.1 前端 68/68、后端 6/6、新增 Android JVM 25/25；§8 K-06 改「已缓解+残留无 tag」；R-013 关闭） |
 
 **选取约束（对自动循环）**：
 - T-13/T-14/T-15/T-10/T-11 需 Android 真机，headless agent 无法自动执行真机步骤 → 这些在自动循环里标 `blocked`（缺真机），**不得**由 agent 凭空伪造真机结果；仅可做其可自动化的子项（如补单测、补文档、补 CI 校验）。
-- ~~B-09~~（周期 8 已完成）、C-01、T-16（代码/文档侧）为 headless agent 可自动执行的候选。
+- ~~B-09~~（周期 8 已完成）、~~B-10~~（周期 9 已完成）、C-01、T-16（代码/文档侧）为 headless agent 可自动执行的候选。
 - 详见 `docs/auto-cycle/CHARTER.md` §4.2（无可验证验收项不得启动）与 §3.5（无任务标 skipped）。
 
 ---
@@ -111,3 +112,4 @@
 | 2026-11-13 | 自动化循环锁生命周期加固（周期 5，对应 risk-register R-008 已关闭 / R-009 已缓解）：EXIT trap 条件化释放防并行轮互覆盖、失败/超时/降级路径统一清空 holder、抢锁后增加陈旧锁接管自愈、收尾改 jq coalesce 不再覆盖 PM agent 写回的 task/priority/result/gates、`STATE/LOCK/AUDIT_DIR/AGENT_CMD/AGENT_OUT_DIR/FROZEN/STOP/READONLY` 改为可环境覆盖变量；新增回归 `tests/autocycle/run-cycle-lock-regression.sh` 22/22 通过。门禁：bash -n 全通过、前端 68/68、服务端 6/6（首跑+复跑）、build、guards.sh 通过 |
 | 2026-11-13 | 自动化循环运行时 PATH 收口（周期 7 resume 续跑周期 6 rc=127 遗留，对应 risk-register R-012 已关闭）：`gpx-autocycle.service`/`gpx-autocycle-archive.service` 显式声明补齐 node+dsh 的 `Environment=PATH`；`run-cycle.sh` 改幂等循环同时前置 `~/.local/node/bin` 与 `~/.local/share/pnpm`；抢锁前新增依赖预检（`AUTOCYCLE_REQUIRE_BINS` 可覆盖）缺失即快速失败且不抢锁/不写状态机；新增回归 `tests/autocycle/runtime-path-regression.sh` 31/31 通过。门禁：bash -n 全通过、锁回归 22/22、前端 68/68、服务端 6/6、build、guards.sh 通过。B-09（README 版本漂移）仍未收口 |
 | 2026-11-13 | B-09 文档漂移收口完成（周期 8 new 轮）：`package.json`/`README.md`/`CHANGELOG.md` 三方版本统一 `0.3.16`；README 首屏注明版本真源为 `package.json` 并补齐 v0.3.13–v0.3.15 变更记录；管理文档 §1.2 Git 三行按实际更正（仓库/origin/分支/35 提交/无 tag）、§5 M1「未完成→基本达成」与 M2「未启动→部分完成」对齐 backlog 完成态、§5.1 T-01/T-07/T-08 标完成且 T-04 补 android-app（真机）/android-native（SIMULATION）界定。门禁：三方版本一致、README 版本表无断号、前端 68/68、服务端 6/6、build、guards.sh 通过。残留基线文档漂移转登记 R-013，C-01 仍开放 |
+| 2026-11-13 | B-10 管理文档残留漂移收口完成（周期 9 new 轮，关闭 R-013）：管理文档 §1.2 工作目录 `E:\project\gpx-3d-viewer`→`/home/ubuntu/gpx-3d-viewer`、HEAD 提交数 35 改为真源引用（`git rev-list --count HEAD`，当时 36）防固化漂移；项目版本真源 0.3.12→0.3.16 对齐 `package.json`；§1.3 移动端目标「尚未落地」→android-app/android-native 双线实际补全（锁屏真实 GNSS/声音振动/持久化仍标未实现，指向 T-13/14/15）；§6.1 测试证据按周期 9 实跑更正（前端 30→68/68、后端补 6/6、新增 Android JVM 25/25 行、26/30 历史快照不可与当前混同）；§8 K-06「当前不是 Git 仓库」→「已缓解（仓库存在）+ 残留无 tag」。门禁：前端 68/68、服务端 6/6、guards.sh 通过。C-01 仍开放，为下一文档治理候选 |
