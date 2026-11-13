@@ -41,7 +41,9 @@ SUMMARY="state/.archive-summary-${TODAY}.md"
 # 推送前置检查 (CHARTER §5.3)
 if ! scripts/autocycle/guards.sh; then
   log "ERROR：推送前置检查阻断，禁止提交/推送。等待人工。"
-  jq '.last_run.status="await_confirm" | .stats.await_confirm=(.stats.await_confirm//0)+1' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+  # 写独立的 last_archive_run，不碰 PM 轮的 last_run（修复 R-018：归档失败曾越权覆盖
+  # last_run.status，致下一个 PM 轮误读 PREV=failed 而空转 resume）
+  jq '.last_archive_run.status="await_confirm" | .last_archive_run.finished_at=(now|todateiso8601) | .stats.await_confirm=(.stats.await_confirm//0)+1' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
   exit 1
 fi
 
@@ -55,31 +57,41 @@ else
   log "无改动，跳过提交。"
 fi
 
-# 推送（退避重试 2 次，CHARTER §5.5）
-# 先判断是否真的需要推送：无本地领先提交且工作区干净则跳过，避免无谓 push 失败告警
-BEHIND_COUNT=$($GIT rev-list --count origin/"$BRANCH"..HEAD 2>/dev/null || echo "0")
-UNPUSHED=$( [ "${BEHIND_COUNT:-0}" -gt 0 ] && echo 1 || echo 0 )
-if [ "$UNPUSHED" -eq 0 ] && [ -z "$($GIT status --porcelain)" ]; then
-  log "本地与远端一致，无需要推送的提交，跳过 push。"
+# 推送（退避重试 2 次 + 推送后对账，修复 R-018 根因 a/c，CHARTER §5.5）
+# 凭据：token 从 DSH 凭证服务读取，构造临时 URL，不驻留 .git/config
+ARCH_TOKEN="$(python3 -c "import yaml;print(yaml.safe_load(open('${DSH_CREDENTIALS:-$HOME/.dsh/.credentials.yaml}'))['refs'].get('GITHUB_TOKEN',''))" 2>/dev/null)"
+REMOTE_URL="https://github.com/qoqpqpq/gpx-3d-viewer.git"
+PUSH_URL="origin"
+[ -n "$ARCH_TOKEN" ] && PUSH_URL="https://x-access-token:${ARCH_TOKEN}@${REMOTE_URL#https://}"
+
+# 远端 HEAD 查询（ls-remote 不依赖本地跟踪引用，规避根因 c 的 refspec 缺失）
+remote_head() {
+  timeout 60 "$GIT" -c http.version=HTTP/1.1 ls-remote "$PUSH_URL" "refs/heads/${BRANCH}" 2>/dev/null | awk '{print $1}'
+}
+LOCAL_HEAD=$("$GIT" rev-parse HEAD)
+REMOTE_HEAD=$(remote_head)
+
+# 判断是否真的需要推送：远端 HEAD 已等于本地 HEAD 则无需 push（不依赖 origin/<branch> 跟踪引用）
+if [ -n "$REMOTE_HEAD" ] && [ "$REMOTE_HEAD" = "$LOCAL_HEAD" ] && [ -z "$($GIT status --porcelain)" ]; then
+  log "对账：远端 ${BRANCH} 已=本地 HEAD ${LOCAL_HEAD:0:7}，无需要推送的提交，跳过 push。"
 else
-  # 推送用带 token 的临时 URL（凭据不驻留 .git/config）；token 从 DSH 凭证服务读取
-  ARCH_TOKEN="$(python3 -c "import yaml;print(yaml.safe_load(open('${DSH_CREDENTIALS:-$HOME/.dsh/.credentials.yaml}'))['refs'].get('GITHUB_TOKEN',''))" 2>/dev/null)"
-  PUSH_URL="origin"
-  if [ -n "$ARCH_TOKEN" ]; then
-    PUSH_URL="https://x-access-token:${ARCH_TOKEN}@github.com/qoqpqpq/gpx-3d-viewer.git"
-  fi
   PUSH_OK=0
   for attempt in 1 2 3; do
-    if timeout 120 "$GIT" -c http.version=HTTP/1.1 push "$PUSH_URL" "$BRANCH":refs/heads/"$BRANCH" 2>&1 | sed -E 's#x-access-token:[^@]*@#***@#g' | tee -a "$LOG"; then
-      PUSH_OK=1; log "推送成功（第 ${attempt} 次）。"; break
+    timeout 120 "$GIT" -c http.version=HTTP/1.1 push "$PUSH_URL" "$BRANCH":refs/heads/"$BRANCH" 2>&1 | sed -E 's#x-access-token:[^@]*@#***@#g' | tee -a "$LOG"
+    # 推送后对账（根因 a）：以远端 HEAD 是否追平本地为准，规避网络假阴性（TLS 抖动但实际已送达）
+    sleep 2
+    REMOTE_HEAD=$(remote_head)
+    if [ -n "$REMOTE_HEAD" ] && [ "$REMOTE_HEAD" = "$("$GIT" rev-parse HEAD)" ]; then
+      PUSH_OK=1; log "推送对账成功：远端 ${BRANCH} 已=本地 HEAD（第 ${attempt} 次尝试后）。"; break
     fi
-    log "推送失败（第 ${attempt} 次），退避重试。"
+    log "推送后对账未通过（第 ${attempt} 次），退避重试。"
     [ $attempt -lt 3 ] && sleep $((attempt * 15))
   done
 
   if [ $PUSH_OK -eq 0 ]; then
-    log "ALERT：推送持续失败（已重试 2 次），记录告警，不再循环重试。"
-    jq '.consecutive_push_failures=(.consecutive_push_failures//0)+1 | .last_run.status="failed"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+    log "ALERT：推送对账 3 次仍未追平（远端=${REMOTE_HEAD:-空} 本地=${LOCAL_HEAD:0:7}），记录告警，不再循环重试。"
+    # 同 R-018 根因 b：写 last_archive_run 而非 last_run，避免污染 PM 轮状态机
+    jq '.consecutive_push_failures=(.consecutive_push_failures//0)+1 | .last_archive_run.status="failed" | .last_archive_run.finished_at=(now|todateiso8601)' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
     exit 1
   fi
 fi
