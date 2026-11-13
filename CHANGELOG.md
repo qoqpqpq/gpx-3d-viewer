@@ -1,5 +1,37 @@
 # 更新日志
 
+## v0.3.14 - 2026-11-13
+
+自动化循环**锁生命周期加固**（周期 5）：收口周期 4 发现的陈旧锁问题（R-008），并修复驱动收尾覆盖 PM agent 状态字段与硬编码相对路径缺陷（R-009）。
+
+---
+
+### 🐛 修复
+
+| 项 | 说明 |
+|---|---|
+| **早退路径留下陈旧锁**（R-008） | `run-cycle.sh` 的 EXIT trap 改为**条件化释放**：仅当 JSON 里 `lock.holder`/`lock.acquired_at` 仍属本进程时才写回复位，避免与并行轮互相覆盖；失败/超时/降级分支统一写 `.lock={held:false,holder:null,acquired_at:null}`，不再残留 holder |
+| **陈旧锁无自愈**（R-008） | `flock` 是真互斥（进程死亡即由内核释放），抢到锁而 JSON 仍记 `held=true` 即判定为崩溃/SIGKILL 残留，驱动现在会复位 JSON 并写 WARN 审计，不再依赖人工清理 |
+| **收尾覆盖 agent 状态字段**（R-009） | 驱动收尾原用 `.last_run.status=$st` 整体覆盖，会把 PM agent 写回的 `task/priority/result/gates` 冲成 null（周期 3 状态记录即因此缺失真实任务描述）；改为 jq coalesce，只兜底缺失字段 |
+| **硬编码相对路径**（R-009） | `state/.cycle-N.out`、`state/READONLY`、`state/FROZEN`、`state/STOP` 原为硬编码相对路径，非仓库根调用会写错位置；`STATE/LOCK/AUDIT_DIR/AGENT_CMD/AGENT_OUT_DIR/FROZEN/STOP/READONLY` 全部改为可环境覆盖变量（默认行为不变） |
+
+---
+
+### ✅ 验证结果
+
+| 门禁 | 结果 |
+|---|---|
+| `bash -n scripts/autocycle/*.sh tests/autocycle/*.sh` | 全部通过 |
+| 锁生命周期回归 `tests/autocycle/run-cycle-lock-regression.sh`（新增） | 22/22 通过，覆盖早退/陈旧锁接管/收尾字段保留/并发抢锁 skip/agent 失败/硬超时 6 类路径 |
+| `npm test` | 68/68 通过 |
+| `npm run test:server` | 6/6 通过（首跑与复跑均通过，R-007 未复现） |
+| `npm run build` | 通过 |
+| `guards.sh` | 通过（无密钥/保护文件/本地路径，调试代码命中 0） |
+
+> 新增回归脚本通过 `AUTOCYCLE_*` 环境变量在沙箱副本上执行，不触碰真实 `state/`；已确认未产生 `.tmp` 残留或越界写入。
+
+---
+
 ## v0.3.13 - 2026-11-13
 
 自动化开发循环驱动修复：PM agent 触发调用方式错误导致周期 1/2 全部失败，本轮定位并修复，自动循环首次跑通。

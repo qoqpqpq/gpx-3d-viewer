@@ -7,10 +7,15 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-STATE="state/cycle-state.json"
-LOCK="state/cycle-state.lock"
-AUDIT_DIR="state/audit"
+# 路径与 agent 命令可被环境覆盖（供 tests/autocycle 回归在沙箱副本上执行，默认行为不变）
+STATE="${AUTOCYCLE_STATE:-state/cycle-state.json}"
+LOCK="${AUTOCYCLE_LOCK:-state/cycle-state.lock}"
+AUDIT_DIR="${AUTOCYCLE_AUDIT_DIR:-state/audit}"
 AUDIT="$AUDIT_DIR/audit-$(date +%F).log"
+AGENT_CMD="${AUTOCYCLE_AGENT_CMD:-dsh --profile headless -}"
+AGENT_OUT_DIR="${AUTOCYCLE_AGENT_OUT_DIR:-state}"
+FROZEN_FLAG="${AUTOCYCLE_FROZEN_FLAG:-state/FROZEN}"
+STOP_FLAG="${AUTOCYCLE_STOP_FLAG:-state/STOP}"
 SOFT_TIMEOUT=${SOFT_TIMEOUT:-1200}   # 20min 软目标
 HARD_TIMEOUT=${HARD_TIMEOUT:-2400}   # 40min 硬上限
 GIT_HTTP=(git -c http.version=HTTP/1.1)
@@ -36,11 +41,11 @@ fi
 case ":$PATH:" in *":$HOME/.local/share/pnpm:"*) ;; *) export PATH="$HOME/.local/share/pnpm:$PATH";; esac
 
 # ---------- 兜底模式检查 ----------
-if [ -f state/FROZEN ]; then
+if [ -f "$FROZEN_FLAG" ]; then
   audit WARN "FROZEN 模式：自动周期已冻结，本轮 skip。"
   echo "[run-cycle] FROZEN：自动周期已冻结，本轮跳过。"; exit 0
 fi
-if [ -f state/STOP ]; then
+if [ -f "$STOP_FLAG" ]; then
   audit WARN "STOP：调度已被永久停止。"
   echo "[run-cycle] STOP：调度已永久停止。"; exit 0
 fi
@@ -57,6 +62,37 @@ if ! flock -n 9; then
   audit ALERT "锁冲突：上一轮仍在运行，本轮 skip，不并行拉起。"
   echo "[run-cycle] 锁被占用，本轮跳过（防竞态）。"; exit 0
 fi
+ACQUIRED_AT="$(date -Iseconds)"
+HOLDER_AT_ACQUIRE="run-cycle"
+LOCK_HELD_BY_ME=1
+
+# 陈旧锁接管：flock 是真互斥（进程死亡即内核释放），能抢到锁说明持锁进程已不在；
+# 若 JSON 仍记 held=true，属崩溃/SIGKILL 残留，安全清掉并告警（完成 R-008 收口）。
+if [ "$(jq -r '.lock.held // false' "$STATE" 2>/dev/null)" = "true" ]; then
+  audit WARN "陈旧锁接管：JSON 记 held=true(holder=$(jq -r '.lock.holder // "null"' "$STATE" 2>/dev/null), acquired $(jq -r '.lock.acquired_at // "null"' "$STATE" 2>/dev/null))，但 flock 已空闲，判定为崩溃残留并复位。"
+  jq '.lock.held=false | .lock.holder=null | .lock.acquired_at=null' "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" 2>/dev/null
+fi
+
+# ---------- 锁守护：任何退出路径都复位 JSON 锁标记并释放 flock ----------
+# 修复 R-008：此前仅正常结束路径清 lock.held，早退会留下陈旧锁导致后续轮误 skip
+# 加固（周期 5，R-009）：
+#   1) 释放动作**条件化**——仅当 JSON 里锁持有者仍是本进程时才写回，避免与并行轮互相覆盖；
+#   2) 释放前先落审计，防止 audit 自身触发 EXIT trap 造成递归；
+#   3) 收尾兜底用 jq coalesce，不覆盖 PM agent 已写入的 task/priority/result/gates。
+LOCK_HELD_BY_ME=0
+release_lock() {
+  if [ "$LOCK_HELD_BY_ME" -eq 1 ]; then
+    printf '%s | %-8s | %s\n' "$(date '+%F %T')" "INFO" "释放锁（EXIT trap）" >> "$AUDIT"
+    LOCK_HELD_BY_ME=0
+    jq --arg h "$HOLDER_AT_ACQUIRE" --arg t "$ACQUIRED_AT" \
+       'if (.lock.holder == $h) and (.lock.acquired_at == $t)
+        then .lock.held=false | .lock.holder=null | .lock.acquired_at=null
+        else . end' "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" 2>/dev/null
+  fi
+  flock -u 9 2>/dev/null
+}
+trap release_lock EXIT
+trap 'exit 130' INT TERM
 
 # ---------- 读状态 ----------
 jq_ok() { jq -e . "$STATE" >/dev/null 2>&1; }
@@ -76,7 +112,7 @@ audit INFO "==== 周期 $NEXT 启动 | 前一轮=$PREV | mode=$MODE ===="
 # 连续 3 轮降级 → 等人工 (CHARTER §2.4)
 if [ "$DEGRADED_N" -ge 3 ]; then
   audit ALERT "连续 ${DEGRADED_N} 轮模型降级，标记告警并等待人工介入，本轮阻塞。"
-  jq '.last_run.status="await_confirm" | .lock.held=false' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+  jq '.last_run.status="await_confirm" | .lock={held:false,holder:null,acquired_at:null}' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
   exit 0
 fi
 
@@ -105,13 +141,14 @@ case "$PREV" in
 esac
 
 # 写入运行中状态 + 锁持有者
-jq --argjson c "$NEXT" --arg t "$(date -Iseconds)" \
+jq --argjson c "$NEXT" --arg t "$ACQUIRED_AT" \
    '.current_cycle=$c | .lock.held=true | .lock.holder="run-cycle" | .lock.acquired_at=$t | .last_run.cycle=$c | .last_run.started_at=$t | .last_run.status="running"' \
    "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
 
 # ---------- 只读模式 (CHARTER §1 兜底) ----------
 READONLY=0
-[ -f state/READONLY ] && READONLY=1 && audit WARN "READONLY 模式：本轮只分析/记录，不改代码。"
+READONLY_FLAG="${AUTOCYCLE_READONLY_FLAG:-state/READONLY}"
+[ -f "$READONLY_FLAG" ] && READONLY=1 && audit WARN "READONLY 模式：本轮只分析/记录，不改代码。"
 
 # ---------- 触发 PM agent ----------
 PROMPT="你是 gpx-3d-viewer 自动化开发 PM。严格遵循 docs/auto-cycle/CHARTER.md 执行【单轮标准流程】。
@@ -125,7 +162,7 @@ START=$(date +%s)
 set +e
 # 用 headless profile（已接入 sensenova）；多行 prompt 走 stdin（"-"），避免参数切分
 printf '%s' "$PROMPT" | timeout --signal=TERM --kill-after=30s "$HARD_TIMEOUT" \
-  dsh --profile headless - > "state/.cycle-${NEXT}.out" 2>&1
+  $AGENT_CMD > "$AGENT_OUT_DIR/.cycle-${NEXT}.out" 2>&1
 RC=$?
 set -e
 END=$(date +%s)
@@ -135,7 +172,7 @@ DUR=$((END - START))
 if [ $RC -eq 124 ] || [ $RC -eq 137 ]; then
   audit ALERT "周期 $NEXT 硬超时（${DUR}s ≥ ${HARD_TIMEOUT}s），强制中断、保存现场、释放锁。"
   jq --argjson c "$NEXT" --arg s "$(date -Iseconds)" --arg m "sensenova-6.8-flash" \
-     '.last_run.status="interrupted" | .last_run.finished_at=$s | .last_run.model=$m | .lock.held=false | .stats.interrupted=(.stats.interrupted//0)+1' \
+     '.last_run.status="interrupted" | .last_run.finished_at=$s | .last_run.model=$m | .lock={held:false,holder:null,acquired_at:null} | .stats.interrupted=(.stats.interrupted//0)+1' \
      "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
   audit ALERT "告警：单轮超时。"
   exit 0
@@ -143,18 +180,26 @@ fi
 if [ $RC -ne 0 ]; then
   audit ERROR "周期 $NEXT agent 异常退出 rc=$RC（${DUR}s），标记 failed、释放锁。"
   jq --arg s "$(date -Iseconds)" \
-     '.last_run.status="failed" | .last_run.finished_at=$s | .lock.held=false | .stats.failed=(.stats.failed//0)+1' \
+     '.last_run.status="failed" | .last_run.finished_at=$s | .lock={held:false,holder:null,acquired_at:null} | .stats.failed=(.stats.failed//0)+1' \
      "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
   exit 0
 fi
 
 # ---------- 正常结束：以 agent 写入的状态为准，兜底置 completed ----------
-FINAL=$(jq -r '.last_run.status // "completed"' "$STATE")
-[ "$FINAL" = "running" ] && FINAL="completed"
-jq --arg s "$(date -Iseconds)" --arg st "$FINAL" \
-   '.last_run.finished_at=$s | .last_run.status=$st | .lock.held=false | .stats[$st]=(.stats[$st]//0)+1' \
+# 收尾只用 coalesce 兜底缺字段，不覆盖 PM agent 写入的 task/priority/result/gates（修复 R-009）
+FINAL_RAW=$(jq -r '.last_run.status // "completed"' "$STATE")
+[ "$FINAL_RAW" = "running" ] && FINAL_RAW="completed"
+jq --arg s "$(date -Iseconds)" --arg st "$FINAL_RAW" \
+   '.last_run.status=(if (.last_run.status // "") == "running" or (.last_run.status // "") == "" then $st else .last_run.status end)
+   | .last_run.finished_at=$s
+   | .last_run.model=(.last_run.model // "sensenova-6.8-flash")
+   | .last_run.degrade_reason=(.last_run.degrade_reason // null)
+   | .last_run.context_compressed=(.last_run.context_compressed // false)
+   | .lock.held=false | .lock.holder=null | .lock.acquired_at=null
+   | .stats[.last_run.status]=(.stats[.last_run.status]//0)+1' \
    "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
-audit INFO "周期 $NEXT 结束：status=$FINAL 用时=${DUR}s"
+FINAL=$(jq -r '.last_run.status' "$STATE")
+audit INFO "周期 $NEXT 结束：status=$FINAL 用时=${DUR}s（agent 写入字段 task/priority/result/gates 已保留）"
 
 # ---------- 结构化审计落盘 ----------
 jq -c --arg ts "$(date -Iseconds)" --argjson c "$NEXT" --argjson dur "$DUR" --arg mode "$MODE_LABEL" \
