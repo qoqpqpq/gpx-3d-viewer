@@ -56,19 +56,32 @@ else
 fi
 
 # 推送（退避重试 2 次，CHARTER §5.5）
-PUSH_OK=0
-for attempt in 1 2 3; do
-  if timeout 120 "$GIT" push -u origin "$BRANCH" 2>&1 | sed -E 's#x-access-token:[^@]*@#***@#g' | tee -a "$LOG"; then
-    PUSH_OK=1; log "推送成功（第 ${attempt} 次）。"; break
+# 先判断是否真的需要推送：无本地领先提交且工作区干净则跳过，避免无谓 push 失败告警
+BEHIND_COUNT=$($GIT rev-list --count origin/"$BRANCH"..HEAD 2>/dev/null || echo "0")
+UNPUSHED=$( [ "${BEHIND_COUNT:-0}" -gt 0 ] && echo 1 || echo 0 )
+if [ "$UNPUSHED" -eq 0 ] && [ -z "$($GIT status --porcelain)" ]; then
+  log "本地与远端一致，无需要推送的提交，跳过 push。"
+else
+  # 推送用带 token 的临时 URL（凭据不驻留 .git/config）；token 从 DSH 凭证服务读取
+  ARCH_TOKEN="$(python3 -c "import yaml;print(yaml.safe_load(open('${DSH_CREDENTIALS:-$HOME/.dsh/.credentials.yaml}'))['refs'].get('GITHUB_TOKEN',''))" 2>/dev/null)"
+  PUSH_URL="origin"
+  if [ -n "$ARCH_TOKEN" ]; then
+    PUSH_URL="https://x-access-token:${ARCH_TOKEN}@github.com/qoqpqpq/gpx-3d-viewer.git"
   fi
-  log "推送失败（第 ${attempt} 次），退避重试。"
-  [ $attempt -lt 3 ] && sleep $((attempt * 15))
-done
+  PUSH_OK=0
+  for attempt in 1 2 3; do
+    if timeout 120 "$GIT" -c http.version=HTTP/1.1 push "$PUSH_URL" "$BRANCH":refs/heads/"$BRANCH" 2>&1 | sed -E 's#x-access-token:[^@]*@#***@#g' | tee -a "$LOG"; then
+      PUSH_OK=1; log "推送成功（第 ${attempt} 次）。"; break
+    fi
+    log "推送失败（第 ${attempt} 次），退避重试。"
+    [ $attempt -lt 3 ] && sleep $((attempt * 15))
+  done
 
-if [ $PUSH_OK -eq 0 ]; then
-  log "ALERT：推送持续失败（已重试 2 次），记录告警，不再循环重试。"
-  jq '.consecutive_push_failures=(.consecutive_push_failures//0)+1 | .last_run.status="failed"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
-  exit 1
+  if [ $PUSH_OK -eq 0 ]; then
+    log "ALERT：推送持续失败（已重试 2 次），记录告警，不再循环重试。"
+    jq '.consecutive_push_failures=(.consecutive_push_failures//0)+1 | .last_run.status="failed"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+    exit 1
+  fi
 fi
 
 jq '.consecutive_push_failures=0' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
