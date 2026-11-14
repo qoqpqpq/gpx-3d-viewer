@@ -2,6 +2,7 @@ import { refreshBackendConfig } from './adapters/backend';
 import { refreshQuotaUsage, dayUsagePercent, type QuotaUsage, type QuotaState, type QuotaAlert } from './adapters/quota';
 import { assessDifficulty } from './core/difficulty';
 import { returnGuidance } from './core/navigation';
+import { anchorWaypoints, type AnchoredWaypoint } from './core/waypoints';
 import './style.css';
 import { demoGpx } from './demo';
 import { hashFile, listTracks, saveTrack, saveTracks, deleteTrack } from './adapters/storage';
@@ -42,7 +43,7 @@ const elevation=(v:number|null|undefined)=>v==null?'—':Math.round(v).toLocaleS
 const duration=(ms:number|null)=>ms===null?'—':`${Math.floor(ms/3600000)}h ${Math.floor(ms%3600000/60000)}m`;
 
 $('#app').innerHTML=`
-  <header class="topbar"><a class="brand" href="/" aria-label="山径首页"><span class="brand-symbol">${icon('mountain')}</span><span>山径<span class="brand-en">RIDGELINE</span></span></a><div class="top-title">路线工作台 <span class="build-badge">桌面预览 · 0.3.20</span></div><div class="top-actions"><span id="network" class="connection"><i></i>本地优先</span><button id="settings" class="icon-button" title="地图与说明" aria-label="地图与说明">${icon('settings')}</button><span class="avatar">山</span></div></header>
+  <header class="topbar"><a class="brand" href="/" aria-label="山径首页"><span class="brand-symbol">${icon('mountain')}</span><span>山径<span class="brand-en">RIDGELINE</span></span></a><div class="top-title">路线工作台 <span class="build-badge">桌面预览 · 0.3.21</span></div><div class="top-actions"><span id="network" class="connection"><i></i>本地优先</span><button id="settings" class="icon-button" title="地图与说明" aria-label="地图与说明">${icon('settings')}</button><span class="avatar">山</span></div></header>
   <div class="workspace"><aside class="library"><div class="library-heading"><h2>${icon('folder')} 我的路线</h2><span id="route-count">0</span></div><div class="library-controls"><div class="search-field"><span class="search-icon">${icon('search')}</span><input id="search-routes" type="search" placeholder="搜索路线名称…" aria-label="搜索路线"></div><select id="sort-routes" aria-label="排序方式"><option value="date">按导入时间</option><option value="name">按名称</option><option value="distance">按距离</option></select></div><button class="import-button" id="import">${icon('plus')} 导入 GPX <span>↗</span></button><input id="file" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden><p class="library-note">文件留在这台设备，随时再出发。</p><div id="route-list" class="route-list" aria-label="轨迹库"></div><button id="add-demo" class="text-button">${icon('route')} 打开演示路线</button><div class="library-footer"><span class="small-label">MADE FOR THE TRAIL</span><p>把路线看清楚。<br>让每一步更从容。</p><div>${icon('shield')} GPX 本地处理，不上传</div></div></aside>
   <main class="main"><section class="route-heading"><div><div class="eyebrow"><span class="status-dot"></span> 路线探索 <span id="route-kind">GPX TRACK</span></div><h1 id="route-name">正在准备路线…</h1><div id="route-meta" class="route-meta">本地路线工作台</div></div><div class="route-actions"><button id="nav" class="icon-button" title="打开外部地图前往路线起点" aria-label="打开外部地图前往路线起点">${icon('nav')}</button><button id="rename" class="icon-button" title="重命名路线" aria-label="重命名路线">${icon('edit')}</button><button id="export" class="icon-button" title="导出原始 GPX" aria-label="导出原始 GPX">${icon('download')}</button><button id="remove" class="icon-button" title="删除路线" aria-label="删除路线">${icon('trash')}</button></div></section>
   <section class="metrics" aria-label="路线统计"><div class="metric">${icon('route')}<div><span>路线距离</span><strong id="distance">—</strong></div></div><div class="metric">${icon('up')}<div><span>累计爬升</span><strong id="ascent">—</strong></div></div><div class="metric">${icon('down')}<div><span>累计下降</span><strong id="descent">—</strong></div></div><div class="metric">${icon('mountain')}<div><span>最高海拔</span><strong id="highest">—</strong></div></div><div class="metric">${icon('clock')}<div><span>记录历时</span><strong id="duration">—</strong></div></div><div class="metric">${icon('mountain')}<div><span>难度 · 预计</span><strong id="difficulty">—</strong></div></div></section>
@@ -59,6 +60,7 @@ $('#app').innerHTML=`
   <div id="importing" class="import-overlay" hidden><div>${icon('upload')}<h2>正在整理路线</h2><p id="import-status">解析 GPX 并计算统计…</p><button id="cancel-import" class="secondary-button">取消导入</button></div></div>`;
 
 let records:StoredTrack[]=[], current:StoredTrack|undefined, selected=0;
+let anchoredWps:AnchoredWaypoint[]=[];
 let scene:Scene3D|AmapScene|undefined, mode:'2d'|'3d'='2d', sceneGeneration=0;
 let simulation:ReturnType<typeof setInterval>|undefined, browserActive=false, lastFix:LocationFix|undefined;
 let reverse=false, simMeter=0, lastTick=0;
@@ -112,6 +114,7 @@ function renderProfile(){
   if(!current)return;
   const t=current.track, min=t.stats.min??0, max=t.stats.max??1, span=Math.max(30,max-min);
   const y=(e:number)=>108-(e-min)/span*93,x=(d:number)=>d/Math.max(t.stats.distance,1)*1000;
+  anchoredWps=anchorWaypoints(t);
   const runs:string[]=[];
   for(const seg of t.segments){
     // Split missing elevation before display sampling, never bridge a missing interval.
@@ -119,11 +122,19 @@ function renderProfile(){
     const flush=()=>{ if(part.length)runs.push(thin(part,500).map(p=>`${x(p.distance).toFixed(2)},${y(p.ele!).toFixed(2)}`).join(' '));part=[]; };
     for(const p of seg){if(p.ele===undefined)flush();else part.push(p);}flush();
   }
-  $('#profile').innerHTML=`<defs><linearGradient id="profile-gradient" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#90a875" stop-opacity=".36"/><stop offset="1" stop-color="#90a875" stop-opacity=".05"/></linearGradient></defs>${[15,61,108].map(v=>`<line x1="0" y1="${v}" x2="1000" y2="${v}" stroke="#e5e7dd" stroke-dasharray="4 5"/>`).join('')}${runs.map(s=>`<polygon points="${s.split(' ')[0].split(',')[0]},120 ${s} ${s.split(' ').at(-1)!.split(',')[0]},120" fill="url(#profile-gradient)"/><polyline points="${s}" fill="none" stroke="#6b8653" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('')}<line id="profile-cursor" x1="0" y1="0" x2="0" y2="120" stroke="#cd6944" stroke-dasharray="4 3"/><circle id="profile-point" cx="0" cy="108" r="4" fill="#ce704c"/>`;
+  $('#profile').innerHTML=`<defs><linearGradient id="profile-gradient" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#90a875" stop-opacity=".36"/><stop offset="1" stop-color="#90a875" stop-opacity=".05"/></linearGradient></defs>${[15,61,108].map(v=>`<line x1="0" y1="${v}" x2="1000" y2="${v}" stroke="#e5e7dd" stroke-dasharray="4 5"/>`).join('')}${runs.map(s=>`<polygon points="${s.split(' ')[0].split(',')[0]},120 ${s} ${s.split(' ').at(-1)!.split(',')[0]},120" fill="url(#profile-gradient)"/><polyline points="${s}" fill="none" stroke="#6b8653" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('')}${anchoredWps.map((w,i)=>{const cx=x(w.routeDistance),cy=t.stats.elevationCount&&w.ele!=null?y(w.ele):108;return `<circle class="wp-marker" data-wp="${i}" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="4" fill="#fffef9" stroke="#5b7442" stroke-width="1.6" style="cursor:pointer"><title>${esc(w.name)}</title></circle>`;}).join('')}<line id="profile-cursor" x1="0" y1="0" x2="0" y2="120" stroke="#cd6944" stroke-dasharray="4 3"/><circle id="profile-point" cx="0" cy="108" r="4" fill="#ce704c"/>`;
   $('#profile-empty').hidden=t.stats.elevationCount>0;
   $('#elevation-axis').innerHTML=[max,(min+max)/2,min].map(v=>`<span>${t.stats.elevationCount?Math.round(v)+' m':'—'}</span>`).join('');
   $('#distance-axis').innerHTML=Array.from({length:6},(_,i)=>`<span>${(t.stats.distance/1000*i/5).toFixed(1)} km</span>`).join('');
 }
+$('#profile').addEventListener('click',e=>{
+  const target=(e.target as HTMLElement).closest?.('.wp-marker') as HTMLElement|null;
+  if(!target||!current)return;
+  const w=anchoredWps[Number(target.dataset.wp)];
+  if(!w)return;
+  selectMeter(w.routeDistance);
+  toast(`航点「${w.name}」· ${w.routeDistance.toFixed(0)} m 处 · ${w.lat.toFixed(4)}, ${w.lon.toFixed(4)}`);
+});
 function selectMeter(meter:number){
   if(!current)return;selected=Math.max(0,Math.min(current.track.stats.distance,meter));
   const t=current.track,p=pointAt(t,selected,activeSegment);activeSegment=p.segment;$('#segment').value=String(activeSegment);
