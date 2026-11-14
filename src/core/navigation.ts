@@ -2,6 +2,34 @@ import { localXY } from './geo';
 import type { LocationFix, Track, TrackPoint } from './types';
 
 export interface Match { distance: number; progress: number; segment: number; point: TrackPoint; requiresReanchor?: boolean }
+
+export interface ReturnGuidance {
+  /** 偏离点到最近路网点的直线距离，单位米（WGS84 局地平面近似） */
+  distance: number;
+  /** 回到最近路网点的方位角，单位度（0=正北，顺时针，0-360） */
+  bearing: number;
+  /** 八方位中文描述（如"东北""正西"） */
+  cardinal: string;
+  /** 相对偏离方向的粗略判断（北向分量主导则为 ahead/behind，东向主导为 beside） */
+  lateral: 'ahead' | 'behind' | 'beside';
+}
+
+/**
+ * U-02: 偏离后"返回路线"指引。
+ * 以当前定位为原点，计算到最近路网点的直线距离与方位，把"你偏了"补全为"往哪个方向回去、多远"。
+ * 纯几何计算，复用 matchRoute 已求得的最近路网点，不改变既有偏航判定阈值与状态机。
+ */
+export function returnGuidance(fix: LocationFix, nearest: TrackPoint): ReturnGuidance {
+  // localXY 以 fix 为原点，返回 nearest 相对 fix 的东向/北向米数
+  const [east, north] = localXY(nearest, fix);
+  const distance = Math.hypot(east, north);
+  // 方位角：从正北顺时针，atan2(东, 北)
+  const bearing = ((Math.atan2(east, north) * 180) / Math.PI + 360) % 360;
+  const dirs = ['正北', '东北', '正东', '东南', '正南', '西南', '正西', '西北'];
+  const cardinal = dirs[Math.round(bearing / 45) % 8];
+  const lateral = Math.abs(east) > Math.abs(north) ? 'beside' : north >= 0 ? 'ahead' : 'behind';
+  return { distance, bearing, cardinal, lateral };
+}
 export function matchRoute(track: Track, fix: LocationFix, previous?: number, window = 400, activeSegment?:number): Match {
   let nearest: Match | undefined, global: Match | undefined;
   for (const segment of track.segments) {

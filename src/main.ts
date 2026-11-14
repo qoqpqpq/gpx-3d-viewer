@@ -1,6 +1,7 @@
 import { refreshBackendConfig } from './adapters/backend';
 import { refreshQuotaUsage, dayUsagePercent, type QuotaUsage, type QuotaState, type QuotaAlert } from './adapters/quota';
 import { assessDifficulty } from './core/difficulty';
+import { returnGuidance } from './core/navigation';
 import './style.css';
 import { demoGpx } from './demo';
 import { hashFile, listTracks, saveTrack, saveTracks, deleteTrack } from './adapters/storage';
@@ -41,7 +42,7 @@ const elevation=(v:number|null|undefined)=>v==null?'—':Math.round(v).toLocaleS
 const duration=(ms:number|null)=>ms===null?'—':`${Math.floor(ms/3600000)}h ${Math.floor(ms%3600000/60000)}m`;
 
 $('#app').innerHTML=`
-  <header class="topbar"><a class="brand" href="/" aria-label="山径首页"><span class="brand-symbol">${icon('mountain')}</span><span>山径<span class="brand-en">RIDGELINE</span></span></a><div class="top-title">路线工作台 <span class="build-badge">桌面预览 · 0.3.19</span></div><div class="top-actions"><span id="network" class="connection"><i></i>本地优先</span><button id="settings" class="icon-button" title="地图与说明" aria-label="地图与说明">${icon('settings')}</button><span class="avatar">山</span></div></header>
+  <header class="topbar"><a class="brand" href="/" aria-label="山径首页"><span class="brand-symbol">${icon('mountain')}</span><span>山径<span class="brand-en">RIDGELINE</span></span></a><div class="top-title">路线工作台 <span class="build-badge">桌面预览 · 0.3.20</span></div><div class="top-actions"><span id="network" class="connection"><i></i>本地优先</span><button id="settings" class="icon-button" title="地图与说明" aria-label="地图与说明">${icon('settings')}</button><span class="avatar">山</span></div></header>
   <div class="workspace"><aside class="library"><div class="library-heading"><h2>${icon('folder')} 我的路线</h2><span id="route-count">0</span></div><div class="library-controls"><div class="search-field"><span class="search-icon">${icon('search')}</span><input id="search-routes" type="search" placeholder="搜索路线名称…" aria-label="搜索路线"></div><select id="sort-routes" aria-label="排序方式"><option value="date">按导入时间</option><option value="name">按名称</option><option value="distance">按距离</option></select></div><button class="import-button" id="import">${icon('plus')} 导入 GPX <span>↗</span></button><input id="file" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden><p class="library-note">文件留在这台设备，随时再出发。</p><div id="route-list" class="route-list" aria-label="轨迹库"></div><button id="add-demo" class="text-button">${icon('route')} 打开演示路线</button><div class="library-footer"><span class="small-label">MADE FOR THE TRAIL</span><p>把路线看清楚。<br>让每一步更从容。</p><div>${icon('shield')} GPX 本地处理，不上传</div></div></aside>
   <main class="main"><section class="route-heading"><div><div class="eyebrow"><span class="status-dot"></span> 路线探索 <span id="route-kind">GPX TRACK</span></div><h1 id="route-name">正在准备路线…</h1><div id="route-meta" class="route-meta">本地路线工作台</div></div><div class="route-actions"><button id="nav" class="icon-button" title="打开外部地图前往路线起点" aria-label="打开外部地图前往路线起点">${icon('nav')}</button><button id="rename" class="icon-button" title="重命名路线" aria-label="重命名路线">${icon('edit')}</button><button id="export" class="icon-button" title="导出原始 GPX" aria-label="导出原始 GPX">${icon('download')}</button><button id="remove" class="icon-button" title="删除路线" aria-label="删除路线">${icon('trash')}</button></div></section>
   <section class="metrics" aria-label="路线统计"><div class="metric">${icon('route')}<div><span>路线距离</span><strong id="distance">—</strong></div></div><div class="metric">${icon('up')}<div><span>累计爬升</span><strong id="ascent">—</strong></div></div><div class="metric">${icon('down')}<div><span>累计下降</span><strong id="descent">—</strong></div></div><div class="metric">${icon('mountain')}<div><span>最高海拔</span><strong id="highest">—</strong></div></div><div class="metric">${icon('clock')}<div><span>记录历时</span><strong id="duration">—</strong></div></div><div class="metric">${icon('mountain')}<div><span>难度 · 预计</span><strong id="difficulty">—</strong></div></div></section>
@@ -155,7 +156,7 @@ function handleFix(fix:LocationFix){
   const d=result.match?Math.round(result.match.distance):0;
   if(result.state==='on-route')status('正在沿线行进',`距路线 ${d} m · 定位精度 ±${Math.round(fix.accuracy)} m`,'good');
   else if(result.state==='pending')status('正在确认偏离',`距路线 ${d} m，持续 5 秒后提醒。`,'pending');
-  else if(result.state==='off-route')status('已偏离路线',`距路线约 ${d} m，请停下核对原轨迹。`,'off');
+  else if(result.state==='off-route'){const back=result.match?returnGuidance(fix,result.match.point):undefined;status('已偏离路线',`距路线约 ${d} m${back?` · 往 ${back.cardinal} 约 ${Math.round(back.distance)} m 回到路线`:''}，请停下核对原轨迹。`,'off');}
   else if(result.reason==='reanchor')status('请重新确认路段','位置跨越较远路段，请停止后选取起始里程。','uncertain');
   else status('位置暂不可靠','精度不足或位置过期，暂停偏离判断。','uncertain');
   if(result.alert)alertUser();refreshRecording();
