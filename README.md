@@ -2,7 +2,7 @@
 
 GPX 路线工作台。面向中国大陆用户的户外行前规划与沿轨迹行进辅助工具。
 
-**当前版本：** v0.3.17 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI + 自动化开发循环（`docs/auto-cycle/`）
+**当前版本：** v0.3.18 桌面浏览器原型 + Android 最小闭环原型 + Android Native GPX 导入统计与模拟导航 UI + 自动化开发循环（`docs/auto-cycle/`）
 
 > 版本号以 `package.json` 为唯一真源，本文件与 `CHANGELOG.md` 保持同步（漂移收口见 `docs/task-backlog.md` B-09）。
 

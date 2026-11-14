@@ -16,3 +16,20 @@
 /* External map navigation dialog */
 #nav-dialog{max-width:420px;padding:24px}#nav-dest{font-size:13px;color:#52594b;margin-bottom:14px;line-height:1.5}#nav-services{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}.nav-service{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);text-decoration:none;transition:background .18s,border-color .18s}.nav-service:hover{background:#f0f4ea;border-color:#a9c87e}.nav-service-label{font-weight:600;font-size:13px}.nav-service-note{font-size:10px;color:#899184}
 @media(max-width:700px){#nav-dialog{max-width:100%}}
+/* F-01 代理额度用量面板（设置对话框内） */
+.quota-panel{margin:14px 0 4px;padding:13px 14px;border:1px solid var(--line);border-radius:8px;background:#f8faf3}
+.quota-panel .panel-title h3{font-size:12px;font-weight:650;display:flex;align-items:center;gap:6px;margin:0}
+.quota-panel .panel-title{margin-bottom:9px}
+.quota-panel .text-button{margin:0;font-size:10px}
+.quota-body{font-size:11px;color:#5d6b52}
+.quota-row{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0}
+.quota-row span{font-size:10px;color:#8b967e}
+.quota-row strong{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:#344732}
+.quota-row strong small{font-size:9px;font-weight:400;color:#86927a}
+.quota-bar{height:6px;background:#e9eddf;border-radius:3px;overflow:hidden;margin:8px 0 5px}
+.quota-fill{height:100%;background:#8faa68;width:0;transition:width .3s}
+.quota-fill.warn{background:#d5a04b}
+.quota-fill.critical{background:#b86549}
+.quota-meta{display:flex;justify-content:space-between;font-size:9px;color:#9aa88a;margin-bottom:4px}
+.quota-alerts{font-size:10px;color:#b75a39;margin:8px 0 0;line-height:1.6}
+.quota-scope{font-size:9px;color:#a3ad96;margin:9px 0 0;line-height:1.6}
