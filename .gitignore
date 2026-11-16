@@ -18,3 +18,6 @@ android-native/app/build/
 
 # 自动化循环运行时数据（状态机/锁/审计/归档）—— 不入库，见 docs/auto-cycle/CHARTER.md §6
 state/
+
+# 会话交接工件（临时文档，不入库）
+docs/auto-cycle/HANDOFF-*.md
